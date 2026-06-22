@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="CommunityPlatform.API/CommunityPlatform.API.csproj" />
+  <Project Path="CommunityPlatform.Application/CommunityPlatform.Application.csproj" />
+  <Project Path="CommunityPlatform.Domain/CommunityPlatform.Domain.csproj" />
+  <Project Path="CommunityPlatform.Infrastructure/CommunityPlatform.Infrastructure.csproj" />
+  <Project Path="CommunityPlatform.Tests/CommunityPlatform.Tests.csproj" />
+  <Project Path="NotificationService/NotificationService.csproj" />
+  <Project Path="PaymentService/PaymentService.csproj" />
+</Solution>
