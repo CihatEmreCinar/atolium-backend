@@ -1,3 +1,4 @@
+using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Infrastructure.Persistence;
 using CommunityPlatform.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,7 @@ public static class DependencyInjection
 
         services.AddScoped<JwtService>();
         services.AddScoped<AuthService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }

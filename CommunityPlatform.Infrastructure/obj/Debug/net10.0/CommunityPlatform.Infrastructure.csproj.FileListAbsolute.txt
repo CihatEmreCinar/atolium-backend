@@ -17,3 +17,4 @@ C:\Users\cigo_\Documents\atol\CommunityPlatform.Infrastructure\obj\Debug\net10.0
 C:\Users\cigo_\Documents\atol\CommunityPlatform.Infrastructure\obj\Debug\net10.0\Communit.42BFBE67.Up2Date
 C:\Users\cigo_\Documents\atol\CommunityPlatform.Infrastructure\bin\Debug\net10.0\CommunityPlatform.Infrastructure.runtimeconfig.json
 C:\Users\cigo_\Documents\atol\CommunityPlatform.Infrastructure\obj\Debug\net10.0\CommunityPlatform.Infrastructure.genruntimeconfig.cache
+C:\Users\cigo_\Documents\atol\CommunityPlatform.Infrastructure\obj\Debug\net10.0\CommunityPlatform.Infrastructure.sourcelink.json

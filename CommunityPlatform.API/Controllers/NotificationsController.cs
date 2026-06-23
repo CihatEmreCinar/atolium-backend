@@ -10,8 +10,11 @@ namespace CommunityPlatform.API.Controllers;
 [ApiController]
 [Route("api/v1/notifications")]
 [Authorize]
-public class NotificationsController(AppDbContext db, ICurrentUserService currentUser) : ControllerBase
+public class NotificationsController(
+    AppDbContext db,
+    ICurrentUserService currentUser) : ControllerBase
 {
+    // GET /api/v1/notifications?page=1&limit=20
     [HttpGet]
     public async Task<IActionResult> GetMine([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
@@ -26,11 +29,13 @@ public class NotificationsController(AppDbContext db, ICurrentUserService curren
             .Select(n => new NotificationResponse
             {
                 Id = n.Id,
-                Type = n.Type,
+                Type = n.Type.ToString(),       // enum → string (frontend sabit stringe göre ikonlar çizer)
                 Title = n.Title,
                 Body = n.Body,
                 Channel = n.Channel,
+                Metadata = n.Metadata,
                 IsRead = n.IsRead,
+                ReadAt = n.ReadAt,
                 CreatedAt = n.CreatedAt
             })
             .ToListAsync();
@@ -38,6 +43,7 @@ public class NotificationsController(AppDbContext db, ICurrentUserService curren
         return Ok(notifications);
     }
 
+    // GET /api/v1/notifications/unread-count
     [HttpGet("unread-count")]
     public async Task<IActionResult> GetUnreadCount()
     {
@@ -50,6 +56,7 @@ public class NotificationsController(AppDbContext db, ICurrentUserService curren
         return Ok(new { unreadCount = count });
     }
 
+    // PATCH /api/v1/notifications/{id}/read
     [HttpPatch("{id}/read")]
     public async Task<IActionResult> MarkRead(Guid id)
     {
@@ -62,18 +69,24 @@ public class NotificationsController(AppDbContext db, ICurrentUserService curren
         if (notification == null)
             return NotFound();
 
-        notification.IsRead = true;
-        notification.SentAt ??= DateTime.UtcNow;
-        await db.SaveChangesAsync();
+        if (!notification.IsRead)
+        {
+            notification.IsRead = true;
+            notification.ReadAt = DateTime.UtcNow;  // SentAt değil, ReadAt
+            await db.SaveChangesAsync();
+        }
 
-        return Ok(new { id = notification.Id, isRead = notification.IsRead });
+        return Ok(new { id = notification.Id, isRead = notification.IsRead, readAt = notification.ReadAt });
     }
 
+    // PATCH /api/v1/notifications/read-all
     [HttpPatch("read-all")]
     public async Task<IActionResult> MarkAllRead()
     {
         if (currentUser.UserId == null)
             return Unauthorized();
+
+        var now = DateTime.UtcNow;
 
         var unread = await db.Notifications
             .Where(n => n.UserId == currentUser.UserId && !n.IsRead)
@@ -82,11 +95,30 @@ public class NotificationsController(AppDbContext db, ICurrentUserService curren
         foreach (var n in unread)
         {
             n.IsRead = true;
-            n.SentAt ??= DateTime.UtcNow;
+            n.ReadAt = now;
         }
 
         await db.SaveChangesAsync();
 
         return Ok(new { markedRead = unread.Count });
+    }
+
+    // DELETE /api/v1/notifications/{id}
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        if (currentUser.UserId == null)
+            return Unauthorized();
+
+        var notification = await db.Notifications
+            .FirstOrDefaultAsync(n => n.Id == id && n.UserId == currentUser.UserId);
+
+        if (notification == null)
+            return NotFound();
+
+        db.Notifications.Remove(notification);
+        await db.SaveChangesAsync();
+
+        return NoContent();
     }
 }

@@ -1,7 +1,12 @@
-using NotificationService;
+using NotificationService.Consumers;
+using NotificationService.Services;
 
-var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddHostedService<Worker>();
+var host = Host.CreateDefaultBuilder(args)
+    .ConfigureServices((ctx, services) =>
+    {
+        services.AddSingleton<EmailSenderService>();
+        services.AddHostedService<EmailConsumer>();
+    })
+    .Build();
 
-var host = builder.Build();
-host.Run();
+await host.RunAsync();
