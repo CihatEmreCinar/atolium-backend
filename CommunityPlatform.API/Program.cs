@@ -4,14 +4,17 @@ using CommunityPlatform.API.Services;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Infrastructure;
 using CommunityPlatform.Infrastructure.Services;
+using CommunityPlatform.Infrastructure.BackgroundJobs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using CommunityPlatform.Infrastructure.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
+builder.Services.AddSwaggerGen();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 builder.Services.AddHttpContextAccessor();
@@ -31,8 +34,18 @@ builder.Services.AddSingleton<IConnection>(_ =>
 });
 
 builder.Services.AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>();
-builder.Services.AddScoped<INotificationService, NotificationService>(); // ← tek kayıt
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IStorageProvider, LocalStorageProvider>();
+// ─── Sosyal Feed Servisleri ───────────────────────────────────────────────────
+builder.Services.AddScoped<PostService>();
+builder.Services.AddScoped<SocialService>();
+builder.Services.AddScoped<FeedService>();
+builder.Services.AddScoped<TagService>();
 
+// ─── Background Jobs ──────────────────────────────────────────────────────────
+builder.Services.AddHostedService<EngagementScoreJob>();
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -54,7 +67,11 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
+{
     app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

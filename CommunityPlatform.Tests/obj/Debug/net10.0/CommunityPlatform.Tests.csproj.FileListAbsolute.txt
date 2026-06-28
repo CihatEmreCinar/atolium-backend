@@ -484,3 +484,4 @@ C:\Users\cigo_\Documents\atol\CommunityPlatform.Tests\bin\Debug\net10.0\runtimes
 C:\Users\cigo_\Documents\atol\CommunityPlatform.Tests\bin\Debug\net10.0\runtimes\win\lib\net7.0\System.Management.dll
 C:\Users\cigo_\Documents\atol\CommunityPlatform.Tests\obj\Debug\net10.0\MvcTestingAppManifest.json
 C:\Users\cigo_\Documents\atol\CommunityPlatform.Tests\obj\Debug\net10.0\CommunityPlatform.Tests.sourcelink.json
+C:\Users\cigo_\Documents\atol\CommunityPlatform.Tests\bin\Debug\net10.0\CommunityPlatform.API.staticwebassets.runtime.json

@@ -1487,7 +1487,10 @@
         },
         "runtime": {
           "bin/placeholder/CommunityPlatform.Infrastructure.dll": {}
-        }
+        },
+        "frameworkReferences": [
+          "Microsoft.AspNetCore.App"
+        ]
       }
     }
   },

@@ -394,6 +394,235 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.ToTable("Payments");
                 });
 
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.Post", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Caption")
+                        .HasColumnType("text");
+
+                    b.Property<int>("CommentCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("EmployerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<double>("EngagementScore")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0);
+
+                    b.Property<int>("LikeCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ShareCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("WorkshopId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PublishedAt")
+                        .IsDescending()
+                        .HasDatabaseName("ix_posts_published_at");
+
+                    b.HasIndex("WorkshopId")
+                        .HasDatabaseName("ix_posts_workshop_id");
+
+                    b.HasIndex("EngagementScore", "Id")
+                        .IsDescending()
+                        .HasDatabaseName("ix_posts_engagement_score");
+
+                    b.HasIndex("EmployerId", "EngagementScore", "Id")
+                        .HasDatabaseName("ix_posts_feed_cursor");
+
+                    b.ToTable("posts", (string)null);
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostComment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LikeCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ParentCommentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("ix_post_comments_author");
+
+                    b.HasIndex("ParentCommentId");
+
+                    b.HasIndex("PostId", "ParentCommentId")
+                        .HasDatabaseName("ix_post_comments_post_parent");
+
+                    b.ToTable("post_comments", (string)null);
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostLike", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_post_likes_user_id");
+
+                    b.HasIndex("PostId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_post_likes_post_user");
+
+                    b.ToTable("post_likes", (string)null);
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostMedia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CdnUrl")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTime?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("HeightPx")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("MediaType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<short>("OrderIndex")
+                        .HasColumnType("smallint");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<int?>("WidthPx")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId", "OrderIndex")
+                        .HasDatabaseName("ix_post_media_post_order");
+
+                    b.ToTable("post_media", (string)null);
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostShare", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ShareToken")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SharedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId")
+                        .HasDatabaseName("ix_post_shares_post_id");
+
+                    b.HasIndex("ShareToken")
+                        .IsUnique()
+                        .HasDatabaseName("uq_post_shares_token");
+
+                    b.HasIndex("SharedById");
+
+                    b.ToTable("post_shares", (string)null);
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostTag", b =>
+                {
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TagId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PostId", "TagId");
+
+                    b.HasIndex("TagId")
+                        .HasDatabaseName("ix_post_tags_tag_id");
+
+                    b.ToTable("post_tags", (string)null);
+                });
+
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -464,6 +693,41 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_Review_Rating", "\"Rating\" >= 1 AND \"Rating\" <= 5");
                         });
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.Tag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("UsageCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasDatabaseName("uq_tags_slug");
+
+                    b.HasIndex("UsageCount")
+                        .IsDescending()
+                        .HasDatabaseName("ix_tags_usage_count");
+
+                    b.ToTable("tags", (string)null);
                 });
 
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.User", b =>
@@ -560,6 +824,36 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("UserBadges");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.UserFollow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FollowedId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FollowerId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FollowedId")
+                        .HasDatabaseName("ix_user_follows_followed_id");
+
+                    b.HasIndex("FollowerId")
+                        .HasDatabaseName("ix_user_follows_follower_id");
+
+                    b.HasIndex("FollowerId", "FollowedId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_user_follows_pair");
+
+                    b.ToTable("user_follows", (string)null);
                 });
 
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.Wishlist", b =>
@@ -788,6 +1082,119 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Navigation("Workshop");
                 });
 
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.Post", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.EmployerProfile", "Employer")
+                        .WithMany()
+                        .HasForeignKey("EmployerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CommunityPlatform.Domain.Entities.Workshop", "Workshop")
+                        .WithMany()
+                        .HasForeignKey("WorkshopId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employer");
+
+                    b.Navigation("Workshop");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostComment", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.User", "Author")
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CommunityPlatform.Domain.Entities.PostComment", "ParentComment")
+                        .WithMany("Replies")
+                        .HasForeignKey("ParentCommentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CommunityPlatform.Domain.Entities.Post", "Post")
+                        .WithMany("Comments")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("ParentComment");
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostLike", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.Post", "Post")
+                        .WithMany("Likes")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CommunityPlatform.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostMedia", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.Post", "Post")
+                        .WithMany("Media")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostShare", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.Post", "Post")
+                        .WithMany("Shares")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CommunityPlatform.Domain.Entities.User", "SharedBy")
+                        .WithMany()
+                        .HasForeignKey("SharedById")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+
+                    b.Navigation("SharedBy");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostTag", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.Post", "Post")
+                        .WithMany("PostTags")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CommunityPlatform.Domain.Entities.Tag", "Tag")
+                        .WithMany("PostTags")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+
+                    b.Navigation("Tag");
+                });
+
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("CommunityPlatform.Domain.Entities.User", "User")
@@ -835,6 +1242,25 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Navigation("Badge");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.UserFollow", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.User", "Followed")
+                        .WithMany("Followers")
+                        .HasForeignKey("FollowedId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CommunityPlatform.Domain.Entities.User", "Follower")
+                        .WithMany("Following")
+                        .HasForeignKey("FollowerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Followed");
+
+                    b.Navigation("Follower");
                 });
 
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.Wishlist", b =>
@@ -911,6 +1337,29 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Navigation("Workshops");
                 });
 
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.Post", b =>
+                {
+                    b.Navigation("Comments");
+
+                    b.Navigation("Likes");
+
+                    b.Navigation("Media");
+
+                    b.Navigation("PostTags");
+
+                    b.Navigation("Shares");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostComment", b =>
+                {
+                    b.Navigation("Replies");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.Tag", b =>
+                {
+                    b.Navigation("PostTags");
+                });
+
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.User", b =>
                 {
                     b.Navigation("EmployeeProfile");
@@ -918,6 +1367,10 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Navigation("EmployerProfile");
 
                     b.Navigation("Enrollments");
+
+                    b.Navigation("Followers");
+
+                    b.Navigation("Following");
 
                     b.Navigation("Notifications");
 

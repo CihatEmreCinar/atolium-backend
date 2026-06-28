@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "f8x2omM4rLM=",
+  "dgSpecHash": "nTFifN6/2zg=",
   "success": true,
   "projectFilePath": "C:\\Users\\cigo_\\Documents\\atol\\CommunityPlatform.Infrastructure\\CommunityPlatform.Infrastructure.csproj",
   "expectedPackageFiles": [
@@ -20,8 +20,6 @@
     "C:\\Users\\cigo_\\.nuget\\packages\\mailkit\\4.17.0\\mailkit.4.17.0.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\mediatr\\14.1.0\\mediatr.14.1.0.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\mediatr.contracts\\2.0.1\\mediatr.contracts.2.0.1.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.aspnetcore.cryptography.internal\\10.0.9\\microsoft.aspnetcore.cryptography.internal.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.aspnetcore.cryptography.keyderivation\\10.0.9\\microsoft.aspnetcore.cryptography.keyderivation.10.0.9.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.aspnetcore.identity.entityframeworkcore\\10.0.9\\microsoft.aspnetcore.identity.entityframeworkcore.10.0.9.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\6.0.0\\microsoft.bcl.asyncinterfaces.6.0.0.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.bcl.cryptography\\10.0.2\\microsoft.bcl.cryptography.10.0.2.nupkg.sha512",
@@ -37,23 +35,7 @@
     "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.entityframeworkcore.analyzers\\10.0.9\\microsoft.entityframeworkcore.analyzers.10.0.9.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.entityframeworkcore.design\\10.0.9\\microsoft.entityframeworkcore.design.10.0.9.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.entityframeworkcore.relational\\10.0.9\\microsoft.entityframeworkcore.relational.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.caching.abstractions\\10.0.9\\microsoft.extensions.caching.abstractions.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.caching.memory\\10.0.9\\microsoft.extensions.caching.memory.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.configuration\\10.0.9\\microsoft.extensions.configuration.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.configuration.abstractions\\10.0.9\\microsoft.extensions.configuration.abstractions.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.configuration.binder\\10.0.9\\microsoft.extensions.configuration.binder.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\10.0.9\\microsoft.extensions.dependencyinjection.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\10.0.9\\microsoft.extensions.dependencyinjection.abstractions.10.0.9.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.dependencymodel\\10.0.9\\microsoft.extensions.dependencymodel.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.diagnostics\\10.0.9\\microsoft.extensions.diagnostics.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.diagnostics.abstractions\\10.0.9\\microsoft.extensions.diagnostics.abstractions.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.identity.core\\10.0.9\\microsoft.extensions.identity.core.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.identity.stores\\10.0.9\\microsoft.extensions.identity.stores.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.logging\\10.0.9\\microsoft.extensions.logging.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\10.0.9\\microsoft.extensions.logging.abstractions.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.options\\10.0.9\\microsoft.extensions.options.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.options.configurationextensions\\10.0.9\\microsoft.extensions.options.configurationextensions.10.0.9.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.extensions.primitives\\10.0.9\\microsoft.extensions.primitives.10.0.9.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.identitymodel.abstractions\\8.19.1\\microsoft.identitymodel.abstractions.8.19.1.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.identitymodel.jsonwebtokens\\8.19.1\\microsoft.identitymodel.jsonwebtokens.8.19.1.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\microsoft.identitymodel.logging\\8.19.1\\microsoft.identitymodel.logging.8.19.1.nupkg.sha512",
@@ -79,8 +61,7 @@
     "C:\\Users\\cigo_\\.nuget\\packages\\system.io.hashing\\10.0.5\\system.io.hashing.10.0.5.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\system.management\\7.0.2\\system.management.7.0.2.nupkg.sha512",
     "C:\\Users\\cigo_\\.nuget\\packages\\system.reactive\\6.0.1\\system.reactive.6.0.1.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\system.security.cryptography.pkcs\\10.0.0\\system.security.cryptography.pkcs.10.0.0.nupkg.sha512",
-    "C:\\Users\\cigo_\\.nuget\\packages\\system.threading.ratelimiting\\8.0.0\\system.threading.ratelimiting.8.0.0.nupkg.sha512"
+    "C:\\Users\\cigo_\\.nuget\\packages\\system.security.cryptography.pkcs\\10.0.0\\system.security.cryptography.pkcs.10.0.0.nupkg.sha512"
   ],
   "logs": []
 }

@@ -63,6 +63,27 @@ public class EnrollmentsController(
 
         workshop.EnrolledCount += 1;
         await db.SaveChangesAsync();
+        // Create action — db.SaveChangesAsync() sonrasına ekle
+        // Employer'a: yeni kayıt başvurusu bildirimi
+        var employerUser = await db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == workshop.EmployerId)
+            .Select(u => new { u.FullName })
+            .FirstOrDefaultAsync();
+
+        var applicantUser = await db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == currentUser.UserId!.Value)
+            .Select(u => new { u.FullName })
+            .FirstOrDefaultAsync();
+
+        await notifications.NotifyAsync(
+            userId:    workshop.EmployerId,
+            type:      NotificationType.ApplicationReceived,
+            title:     "Yeni katılım başvurusu",
+            body:      $"{applicantUser?.FullName ?? "Bir kullanıcı"} \"{workshop.Title}\" atölyenize katılmak istiyor.",
+            metadata:  new { enrollmentId = enrollment.Id, workshopId = workshop.Id, applicantUserId = currentUser.UserId },
+            sendEmail: true);
 
         return CreatedAtAction(nameof(GetById), new { id = enrollment.Id }, MapToResponse(enrollment, workshop));
     }

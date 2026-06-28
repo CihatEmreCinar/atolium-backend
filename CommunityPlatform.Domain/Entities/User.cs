@@ -19,6 +19,7 @@ public class User
     public DateTime? LastLoginAt { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DeletedAt { get; set; }
+    public string FullName => $"{FirstName} {LastName}".Trim();
 
     // Navigation
     public EmployerProfile? EmployerProfile { get; set; }
@@ -28,4 +29,6 @@ public class User
     public ICollection<Notification> Notifications { get; set; } = [];
     public ICollection<UserBadge> UserBadges { get; set; } = [];
     public ICollection<Wishlist> Wishlists { get; set; } = [];
+    public ICollection<UserFollow> Followers { get; set; } = [];   // beni takip edenler
+    public ICollection<UserFollow> Following { get; set; } = [];   // benim takip ettiklerim
 }
