@@ -73,3 +73,20 @@ public class UploadMediaResponse
     public string UploadUrl { get; set; } = null!;  // Local'de direkt POST endpoint'i
     public short OrderIndex { get; set; }
 }
+
+// PostDtos.cs içine eklenecek — mevcut namespace ve using'lerin altına
+
+public class PostListResponse
+{
+    public List<PostResponse> Posts { get; set; } = new();
+    public string? NextCursor { get; set; }
+    public bool HasNextPage { get; set; }
+}
+
+public class UserSocialStats
+{
+    public int PostCount { get; set; }
+    public int FollowerCount { get; set; }
+    public int FollowingCount { get; set; }
+    public bool IsFollowedByMe { get; set; }
+}

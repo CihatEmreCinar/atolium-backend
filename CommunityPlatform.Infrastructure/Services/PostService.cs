@@ -238,4 +238,108 @@ public class PostService(
         Tags = p.PostTags.Select(pt => pt.Tag.Slug).ToList(),
         PublishedAt = p.PublishedAt
     };
+
+    // ─── Kullanıcının postları (cursor pagination) ──────────────────────────────
+
+    public async Task<PostListResponse> GetUserPostsAsync(
+        Guid userId,
+        string? cursor,
+        int limit = 15)
+    {
+        var employerProfile = await db.EmployerProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.UserId == userId);
+
+        // Employer profili yoksa (employee kullanıcı) boş liste dön
+        if (employerProfile == null)
+        {
+            return new PostListResponse
+            {
+                Posts = new List<PostResponse>(),
+                NextCursor = null,
+                HasNextPage = false
+            };
+        }
+
+        var query = db.Posts
+            .Where(p => p.EmployerId == employerProfile.Id)
+            .Include(p => p.Employer).ThenInclude(e => e.User)
+            .Include(p => p.Workshop)
+            .Include(p => p.Media.Where(m => m.ConfirmedAt != null))
+            .Include(p => p.PostTags).ThenInclude(pt => pt.Tag)
+            .Include(p => p.Likes)
+            .AsNoTracking();
+
+        if (!string.IsNullOrEmpty(cursor))
+        {
+            var (cursorDate, cursorId) = DecodeCursor(cursor);
+            query = query.Where(p =>
+                p.PublishedAt < cursorDate ||
+                (p.PublishedAt == cursorDate && p.Id.CompareTo(cursorId) < 0));
+        }
+
+        var posts = await query
+            .OrderByDescending(p => p.PublishedAt)
+            .Take(limit + 1)
+            .ToListAsync();
+
+        var hasNext = posts.Count > limit;
+        if (hasNext) posts.RemoveAt(posts.Count - 1);
+
+        var requestingUserId = currentUser.UserId;
+        var isFollowing = requestingUserId != null && await db.UserFollows
+            .AnyAsync(f => f.FollowerId == requestingUserId && f.FollowedId == userId);
+
+        return new PostListResponse
+        {
+            Posts = posts.Select(p => MapToResponse(p, requestingUserId, isFollowing)).ToList(),
+            NextCursor = hasNext
+                ? EncodeCursor(posts.Last().PublishedAt, posts.Last().Id)
+                : null,
+            HasNextPage = hasNext
+        };
+    }
+
+    // ─── Kullanıcı sosyal istatistikleri ─────────────────────────────────────────
+
+    public async Task<UserSocialStats> GetUserSocialStatsAsync(Guid userId)
+    {
+        var employerProfile = await db.EmployerProfiles
+            .AsNoTracking()
+            .FirstOrDefaultAsync(e => e.UserId == userId);
+
+        var postCount = employerProfile != null
+            ? await db.Posts.CountAsync(p => p.EmployerId == employerProfile.Id)
+            : 0;
+
+        var followerCount = await db.UserFollows.CountAsync(f => f.FollowedId == userId);
+        var followingCount = await db.UserFollows.CountAsync(f => f.FollowerId == userId);
+
+        var requestingUserId = currentUser.UserId;
+        var isFollowedByMe = requestingUserId != null && await db.UserFollows
+            .AnyAsync(f => f.FollowerId == requestingUserId && f.FollowedId == userId);
+
+        return new UserSocialStats
+        {
+            PostCount = postCount,
+            FollowerCount = followerCount,
+            FollowingCount = followingCount,
+            IsFollowedByMe = isFollowedByMe
+        };
+    }
+
+    // ─── Cursor helpers ──────────────────────────────────────────────────────────
+
+    private static string EncodeCursor(DateTime date, Guid id)
+    {
+        var raw = $"{date:O}|{id}";
+        return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(raw));
+    }
+
+    private static (DateTime date, Guid id) DecodeCursor(string cursor)
+    {
+        var raw = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
+        var parts = raw.Split('|');
+        return (DateTime.Parse(parts[0]), Guid.Parse(parts[1]));
+    }
 }

@@ -71,4 +71,29 @@ public class PostsController(PostService postService) : ControllerBase
         await postService.DeleteMediaAsync(postId, mediaId);
         return NoContent();
     }
+
+    // ─── Kullanıcı postları + sosyal istatistikler ──────────────────────────────
+    // NOT: route /users/{userId}/... — bu yüzden ayrı bir route prefix gerekiyor,
+    // [Route("api/v1/posts")] sınıf seviyesindeki prefix'i ezmek için tam path veriyoruz.
+
+    /// <summary>GET /api/v1/users/{userId}/posts?cursor=&limit=15</summary>
+    [HttpGet("/api/v1/users/{userId:guid}/posts")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetUserPosts(
+        Guid userId,
+        [FromQuery] string? cursor,
+        [FromQuery] int limit = 15)
+    {
+        var result = await postService.GetUserPostsAsync(userId, cursor, limit);
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/v1/users/{userId}/social-stats</summary>
+    [HttpGet("/api/v1/users/{userId:guid}/social-stats")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetUserSocialStats(Guid userId)
+    {
+        var result = await postService.GetUserSocialStatsAsync(userId);
+        return Ok(result);
+    }
 }
