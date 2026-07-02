@@ -16,7 +16,7 @@ public class EnrollmentsController(
     ICurrentUserService currentUser,
     INotificationService notifications) : ControllerBase
 {
-    // Employee atölyeye kayıt olur
+    // Employee atölyeye kayıt başvurusu yapar → "pending"
     [HttpPost]
     [Authorize(Roles = "employee")]
     public async Task<IActionResult> Create([FromBody] EnrollmentRequest request)
@@ -35,8 +35,9 @@ public class EnrollmentsController(
             .FirstOrDefaultAsync(e => e.WorkshopId == workshop.Id && e.UserId == currentUser.UserId);
 
         if (existingEnrollment != null && existingEnrollment.Status != "cancelled")
-            return Conflict(new { message = "Bu atölyeye zaten kayıtlısınız." });
+            return Conflict(new { message = "Bu atölyeye zaten başvurdunuz." });
 
+        // Sadece onaylanmış kayıtlar kapasiteyi doldurur; pending başvurular kapasiteyi hemen tüketmez
         if (workshop.EnrolledCount >= workshop.Capacity)
             return BadRequest(new { message = "Atölye kapasitesi dolu." });
 
@@ -44,10 +45,10 @@ public class EnrollmentsController(
 
         if (existingEnrollment != null)
         {
-            existingEnrollment.Status = "confirmed";
+            existingEnrollment.Status = "pending";
             existingEnrollment.EnrolledAt = DateTime.UtcNow;
             existingEnrollment.AttendedAt = null;
-            existingEnrollment.TicketCode = Guid.NewGuid().ToString("N");
+            existingEnrollment.TicketCode = string.Empty;
             enrollment = existingEnrollment;
         }
         else
@@ -56,20 +57,12 @@ public class EnrollmentsController(
             {
                 WorkshopId = workshop.Id,
                 UserId = currentUser.UserId.Value,
-                Status = "confirmed"
+                Status = "pending"
             };
             db.Enrollments.Add(enrollment);
         }
 
-        workshop.EnrolledCount += 1;
         await db.SaveChangesAsync();
-        // Create action — db.SaveChangesAsync() sonrasına ekle
-        // Employer'a: yeni kayıt başvurusu bildirimi
-        var employerUser = await db.Users
-            .AsNoTracking()
-            .Where(u => u.Id == workshop.EmployerId)
-            .Select(u => new { u.FullName })
-            .FirstOrDefaultAsync();
 
         var applicantUser = await db.Users
             .AsNoTracking()
@@ -122,7 +115,7 @@ public class EnrollmentsController(
         return Ok(MapToResponse(enrollment, enrollment.Workshop));
     }
 
-    // Kayıt iptali
+    // Kayıt iptali (employee)
     [HttpDelete("{id}")]
     [Authorize(Roles = "employee")]
     public async Task<IActionResult> Cancel(Guid id)
@@ -140,9 +133,87 @@ public class EnrollmentsController(
         if (enrollment.Status == "cancelled")
             return BadRequest(new { message = "Kayıt zaten iptal edilmiş." });
 
+        var wasConfirmed = enrollment.Status == "confirmed";
         enrollment.Status = "cancelled";
-        enrollment.Workshop.EnrolledCount = Math.Max(0, enrollment.Workshop.EnrolledCount - 1);
+
+        if (wasConfirmed)
+            enrollment.Workshop.EnrolledCount = Math.Max(0, enrollment.Workshop.EnrolledCount - 1);
+
         await db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // Employer başvuruyu onaylar → "pending" → "confirmed"
+    [HttpPatch("{id}/approve")]
+    [Authorize(Roles = "employer")]
+    public async Task<IActionResult> Approve(Guid id)
+    {
+        var enrollment = await db.Enrollments
+            .Include(e => e.Workshop)
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        if (enrollment == null)
+            return NotFound();
+
+        if (enrollment.Workshop.EmployerId != currentUser.UserId)
+            return Forbid();
+
+        if (enrollment.Status != "pending")
+            return BadRequest(new { message = "Sadece bekleyen başvurular onaylanabilir." });
+
+        if (enrollment.Workshop.EnrolledCount >= enrollment.Workshop.Capacity)
+            return BadRequest(new { message = "Atölye kapasitesi dolu." });
+
+        enrollment.Status = "confirmed";
+        enrollment.TicketCode = Guid.NewGuid().ToString("N");
+        enrollment.Workshop.EnrolledCount += 1;
+
+        await db.SaveChangesAsync();
+
+        await notifications.NotifyAsync(
+            userId:    enrollment.UserId,
+            type:      NotificationType.ApplicationApproved,
+            title:     "Kaydınız onaylandı!",
+            body:      $"\"{enrollment.Workshop.Title}\" atölyesine katılım talebiniz onaylandı.",
+            metadata:  new { workshopId = enrollment.WorkshopId, route = "workshop/detail" },
+            sendEmail: true);
+        return Ok(new
+        {
+            id = enrollment.Id,
+            status = enrollment.Status,
+            ticketCode = enrollment.TicketCode
+        });
+    }
+
+    // Employer başvuruyu reddeder → "pending" → "cancelled"
+    [HttpPatch("{id}/reject")]
+    [Authorize(Roles = "employer")]
+    public async Task<IActionResult> Reject(Guid id)
+    {
+        var enrollment = await db.Enrollments
+            .Include(e => e.Workshop)
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        if (enrollment == null)
+            return NotFound();
+
+        if (enrollment.Workshop.EmployerId != currentUser.UserId)
+            return Forbid();
+
+        if (enrollment.Status != "pending")
+            return BadRequest(new { message = "Sadece bekleyen başvurular reddedilebilir." });
+
+        enrollment.Status = "cancelled";
+        await db.SaveChangesAsync();
+
+        await notifications.NotifyAsync(
+            userId:    enrollment.UserId,
+            type:      NotificationType.ApplicationRejected,
+            title:     "Kayıt talebiniz reddedildi",
+            body:      $"\"{enrollment.Workshop.Title}\" atölyesine katılım talebiniz maalesef reddedildi.",
+            metadata:  new { workshopId = enrollment.WorkshopId },
+            sendEmail: true);
 
         return NoContent();
     }
@@ -168,13 +239,11 @@ public class EnrollmentsController(
         enrollment.Status = "attended";
         enrollment.AttendedAt = DateTime.UtcNow;
 
-        // XP: katılım +25
         var employee = await db.Users.FirstAsync(u => u.Id == enrollment.UserId);
         employee.XpPoints += 25;
 
         await db.SaveChangesAsync();
 
-        // In-app + email bildirim
         await notifications.NotifyAsync(
             userId: enrollment.UserId,
             type: NotificationType.WorkshopCompleted,
@@ -189,6 +258,36 @@ public class EnrollmentsController(
             status = enrollment.Status,
             attendedAt = enrollment.AttendedAt
         });
+    }
+
+    // Employer: kendi atölyelerine gelen başvurular listesi
+    [HttpGet("/api/v1/employer/enrollments")]
+    [Authorize(Roles = "employer")]
+    public async Task<IActionResult> GetEmployerEnrollments([FromQuery] string? status)
+    {
+        var query = db.Enrollments
+            .Include(e => e.Workshop)
+            .Include(e => e.User)
+            .Where(e => e.Workshop.EmployerId == currentUser.UserId)
+            .AsQueryable();
+
+        if (!string.IsNullOrEmpty(status) && status != "all")
+            query = query.Where(e => e.Status == status);
+
+        var result = await query
+            .OrderByDescending(e => e.EnrolledAt)
+            .Select(e => new EmployerEnrollmentResponse
+            {
+                Id = e.Id,
+                WorkshopTitle = e.Workshop.Title,
+                EmployeeName = e.User.FullName,
+                Status = e.Status,
+                AppliedAt = e.EnrolledAt,
+                Message = null
+            })
+            .ToListAsync();
+
+        return Ok(result);
     }
 
     private static EnrollmentResponse MapToResponse(Enrollment e, Workshop w) => new()
