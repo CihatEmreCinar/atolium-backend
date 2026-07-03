@@ -32,6 +32,9 @@ public class EmployeeController(AppDbContext db, ICurrentUserService currentUser
             UserId = profile.UserId,
             Interests = profile.Interests,
             Hobbies = profile.Hobbies,
+            Bio = user.Bio,
+            AvatarUrl = user.AvatarUrl,
+            City = user.City,
             TotalAttendedWorkshops = attendedCount,
             XpPoints = user.XpPoints,
             RankLevel = user.RankLevel
@@ -51,9 +54,13 @@ public class EmployeeController(AppDbContext db, ICurrentUserService currentUser
         profile.Interests = request.Interests ?? [];
         profile.Hobbies = request.Hobbies ?? [];
 
+        var user = await db.Users.FirstAsync(u => u.Id == currentUser.UserId);
+        user.Bio = request.Bio;
+        user.AvatarUrl = request.AvatarUrl;
+        user.City = request.City;
+
         await db.SaveChangesAsync();
 
-        var user = await db.Users.FirstAsync(u => u.Id == currentUser.UserId);
         var attendedCount = await db.Enrollments
             .CountAsync(e => e.UserId == currentUser.UserId && e.Status == "attended");
 
@@ -62,6 +69,9 @@ public class EmployeeController(AppDbContext db, ICurrentUserService currentUser
             UserId = profile.UserId,
             Interests = profile.Interests,
             Hobbies = profile.Hobbies,
+            Bio = user.Bio,
+            AvatarUrl = user.AvatarUrl,
+            City = user.City,
             TotalAttendedWorkshops = attendedCount,
             XpPoints = user.XpPoints,
             RankLevel = user.RankLevel

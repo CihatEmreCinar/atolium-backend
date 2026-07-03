@@ -9,4 +9,5 @@ public class EmployerProfileRequest
     public string? CoverImageUrl { get; set; }
     public string? Bio { get; set; }
     public string? ProfileImageUrl { get; set; }
+    public string? City { get; set; }
 }

@@ -20,6 +20,7 @@ public class EmployerController(AppDbContext db, ICurrentUserService currentUser
             return Unauthorized();
 
         var profile = await db.EmployerProfiles
+            .Include(p => p.User)
             .Include(p => p.EmployerProfileCategories)
                 .ThenInclude(ec => ec.Category)
             .FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
@@ -37,6 +38,7 @@ public class EmployerController(AppDbContext db, ICurrentUserService currentUser
             return Unauthorized();
 
         var profile = await db.EmployerProfiles
+            .Include(p => p.User)
             .Include(p => p.EmployerProfileCategories)
             .FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
         if (profile == null)
@@ -46,8 +48,9 @@ public class EmployerController(AppDbContext db, ICurrentUserService currentUser
         profile.Specialization = request.Specialization ?? [];
         profile.YearsExperience = request.YearsExperience;
         profile.CoverImageUrl = request.CoverImageUrl;
-        profile.Bio = request.Bio;
-        profile.ProfileImageUrl = request.ProfileImageUrl;
+        profile.User.Bio = request.Bio;
+        profile.User.AvatarUrl = request.ProfileImageUrl;
+        profile.User.City = request.City;
 
         profile.EmployerProfileCategories.Clear();
         if (request.CategoryIds != null)
@@ -65,6 +68,7 @@ public class EmployerController(AppDbContext db, ICurrentUserService currentUser
         await db.SaveChangesAsync();
 
         var updated = await db.EmployerProfiles
+            .Include(p => p.User)
             .Include(p => p.EmployerProfileCategories)
                 .ThenInclude(ec => ec.Category)
             .FirstAsync(p => p.UserId == currentUser.UserId);
@@ -128,8 +132,9 @@ public class EmployerController(AppDbContext db, ICurrentUserService currentUser
         CoverImageUrl = p.CoverImageUrl,
         AvgRating = p.AvgRating,
         TotalWorkshops = p.TotalWorkshops,
-        Bio = p.Bio,
-        ProfileImageUrl = p.ProfileImageUrl,
+        Bio = p.User.Bio,
+        ProfileImageUrl = p.User.AvatarUrl,
+        City = p.User.City,
         EmployerRank = p.EmployerRank
     };
 
@@ -166,8 +171,9 @@ public class EmployerController(AppDbContext db, ICurrentUserService currentUser
             FirstName = profile.User.FirstName,
             LastName = profile.User.LastName,
             WorkshopTitle = profile.WorkshopTitle,
-            Bio = profile.Bio,
-            ProfileImageUrl = profile.ProfileImageUrl,
+            Bio = profile.User.Bio,
+            ProfileImageUrl = profile.User.AvatarUrl,
+            City = profile.User.City,
             Specialization = profile.Specialization,
             CategoryNames = profile.EmployerProfileCategories.Select(ec => ec.Category.Name).ToList(),
             YearsExperience = profile.YearsExperience,

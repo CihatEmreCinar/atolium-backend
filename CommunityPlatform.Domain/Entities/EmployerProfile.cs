@@ -11,8 +11,6 @@ public class EmployerProfile
     public decimal AvgRating { get; set; } = 0;
     public int TotalWorkshops { get; set; } = 0;
     public string EmployerRank { get; set; } = "Yeni";
-    public string? Bio { get; set; }
-    public string? ProfileImageUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation

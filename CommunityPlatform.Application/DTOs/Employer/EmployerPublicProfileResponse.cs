@@ -8,6 +8,7 @@ public class EmployerPublicProfileResponse
     public string WorkshopTitle { get; set; } = null!;
     public string? Bio { get; set; }
     public string? ProfileImageUrl { get; set; }
+    public string? City { get; set; }
     public List<string> Specialization { get; set; } = [];
     public List<string> CategoryNames { get; set; } = [];
     public int? YearsExperience { get; set; }
