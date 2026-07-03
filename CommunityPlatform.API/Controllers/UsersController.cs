@@ -1,3 +1,4 @@
+using CommunityPlatform.Application.DTOs.Media;
 using CommunityPlatform.Application.DTOs.Users;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Infrastructure.Persistence;
@@ -10,8 +11,50 @@ namespace CommunityPlatform.API.Controllers;
 [ApiController]
 [Route("api/v1/users")]
 [Authorize]
-public class UsersController(AppDbContext db, ICurrentUserService currentUser) : ControllerBase
+public class UsersController(
+    AppDbContext db,
+    ICurrentUserService currentUser,
+    IStorageProvider storage) : ControllerBase
 {
+    [HttpPost("me/avatar")]
+    [RequestSizeLimit(10_485_760)]
+    public async Task<IActionResult> UploadAvatar(IFormFile file)
+    {
+        if (currentUser.UserId == null)
+            return Unauthorized();
+
+        if (file.Length == 0)
+            return BadRequest(new { message = "Dosya boş olamaz." });
+
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!allowedTypes.Contains(file.ContentType))
+            return BadRequest(new { message = "Sadece JPEG, PNG veya WEBP yükleyebilirsiniz." });
+
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == currentUser.UserId);
+        if (user == null)
+            return NotFound();
+
+        var oldKey = storage.TryGetKeyFromUrl(user.AvatarUrl);
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var key = $"users/{user.Id}/avatar/{Guid.NewGuid()}{extension}";
+
+        await using var stream = file.OpenReadStream();
+        var saved = await storage.SaveAsync(key, stream, file.ContentType);
+
+        user.AvatarUrl = saved.Url;
+        await db.SaveChangesAsync();
+
+        if (!string.IsNullOrWhiteSpace(oldKey) && !string.Equals(oldKey, saved.Key, StringComparison.OrdinalIgnoreCase))
+            await storage.DeleteAsync(oldKey);
+
+        return Ok(new FileUploadResponse
+        {
+            Url = saved.Url,
+            SizeBytes = saved.SizeBytes
+        });
+    }
+
     [HttpGet("me")]
     public async Task<IActionResult> GetMe()
     {

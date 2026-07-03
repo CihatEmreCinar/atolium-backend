@@ -73,6 +73,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// ─── Static Files (uploads) ──────────────────────────────────────────────────
+// LocalStorageProvider dosyaları {WebRootPath}/uploads/ altına yazar.
+// WebRootPath = {ContentRootPath}/wwwroot, bu yüzden uploadsPath aşağıdaki gibi.
+var uploadsPath = Path.Combine(builder.Environment.WebRootPath
+    ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot"), "uploads");
+Directory.CreateDirectory(uploadsPath);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

@@ -56,7 +56,8 @@ public class EmployeeController(AppDbContext db, ICurrentUserService currentUser
 
         var user = await db.Users.FirstAsync(u => u.Id == currentUser.UserId);
         user.Bio = request.Bio;
-        user.AvatarUrl = request.AvatarUrl;
+        if (request.AvatarUrl != null)
+            user.AvatarUrl = request.AvatarUrl;
         user.City = request.City;
 
         await db.SaveChangesAsync();

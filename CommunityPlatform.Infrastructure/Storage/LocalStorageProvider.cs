@@ -36,4 +36,24 @@ public class LocalStorageProvider(
     }
 
     public string GetUrl(string key) => $"{_baseUrl.TrimEnd('/')}/{key}";
+
+    public string? TryGetKeyFromUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
+
+        var baseUrl = _baseUrl.TrimEnd('/');
+
+        if (url.StartsWith(baseUrl + "/", StringComparison.OrdinalIgnoreCase))
+            return url[(baseUrl.Length + 1)..];
+
+        if (Uri.TryCreate(url, UriKind.Absolute, out var absoluteUri))
+        {
+            var path = absoluteUri.AbsolutePath;
+            if (path.StartsWith(baseUrl + "/", StringComparison.OrdinalIgnoreCase))
+                return path[(baseUrl.Length + 1)..];
+        }
+
+        return null;
+    }
 }

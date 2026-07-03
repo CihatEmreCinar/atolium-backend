@@ -17,6 +17,12 @@ public interface IStorageProvider
     /// Serve edilebilir URL döner. Local'de "/uploads/{key}", S3'te CDN URL.
     /// </summary>
     string GetUrl(string key);
+
+    /// <summary>
+    /// Storage'ın ürettiği URL'den key çözülürse dosya güvenli şekilde replace/delete edilebilir.
+    /// Çözülemiyorsa null döner; bu durumda mevcut dosyaya dokunulmaz.
+    /// </summary>
+    string? TryGetKeyFromUrl(string? url);
 }
 
 public record StorageResult(string Key, string Url, long SizeBytes);
