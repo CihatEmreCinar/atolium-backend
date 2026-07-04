@@ -12,22 +12,26 @@ public class AuthService(AppDbContext db, JwtService jwtService)
         if (await db.Users.AnyAsync(u => u.Email == request.Email))
             return null;
 
+        var normalizedRole = NormalizeRole(request.Role);
+
         var user = new User
         {
             Email = request.Email.ToLower().Trim(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             FirstName = request.FirstName,
             LastName = request.LastName,
-            Role = request.Role,
+            Role = normalizedRole,
             City = request.City
         };
 
         db.Users.Add(user);
 
-        if (request.Role == "employer")
+        if (normalizedRole == "employer")
             db.EmployerProfiles.Add(new EmployerProfile { UserId = user.Id, WorkshopTitle = "" });
-        else if (request.Role == "employee")
+        else if (normalizedRole == "employee")
             db.EmployeeProfiles.Add(new EmployeeProfile { UserId = user.Id });
+        else if (normalizedRole == "cafe")
+            db.CafeProfiles.Add(new CafeProfile { UserId = user.Id, Name = string.IsNullOrWhiteSpace(user.FirstName + " " + user.LastName) ? user.Email : $"{user.FirstName} {user.LastName}".Trim() });
 
         await db.SaveChangesAsync();
 
@@ -72,6 +76,21 @@ public class AuthService(AppDbContext db, JwtService jwtService)
         stored.IsRevoked = true;
         await db.SaveChangesAsync();
         return true;
+    }
+
+    private static string NormalizeRole(string? role)
+    {
+        if (string.IsNullOrWhiteSpace(role))
+            return "employee";
+
+        return role.Trim().ToLowerInvariant() switch
+        {
+            "employer" => "employer",
+            "employee" => "employee",
+            "admin" => "admin",
+            "cafe" => "cafe",
+            _ => role.Trim().ToLowerInvariant()
+        };
     }
 
     private async Task<AuthResponse> BuildAuthResponse(User user)

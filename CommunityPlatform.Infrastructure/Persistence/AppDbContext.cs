@@ -9,6 +9,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<User> Users => Set<User>();
     public DbSet<EmployerProfile> EmployerProfiles => Set<EmployerProfile>();
     public DbSet<EmployeeProfile> EmployeeProfiles => Set<EmployeeProfile>();
+    public DbSet<CafeProfile> CafeProfiles => Set<CafeProfile>();
+    public DbSet<SpaceListing> SpaceListings => Set<SpaceListing>();
+    public DbSet<SpaceAvailability> SpaceAvailabilities => Set<SpaceAvailability>();
+    public DbSet<SpaceBooking> SpaceBookings => Set<SpaceBooking>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Workshop> Workshops => Set<Workshop>();
     public DbSet<WorkshopCategory> WorkshopCategories => Set<WorkshopCategory>();
