@@ -4,21 +4,32 @@ using CommunityPlatform.Domain.Entities;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CommunityPlatform.Infrastructure.Services;
 
 public class PostService(
     AppDbContext db,
     IStorageProvider storage,
-    ICurrentUserService currentUser)
+    ICurrentUserService currentUser,
+    Microsoft.Extensions.Logging.ILogger<PostService> logger)
 {
     // ─── Post CRUD ───────────────────────────────────────────────────────────
 
     public async Task<PostResponse> CreatePostAsync(CreatePostRequest req)
     {
+        var userId = currentUser.UserId ?? throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı (token/sub claim eksik).");
+
+        logger.LogInformation("CreatePostAsync: userId={UserId}, workshopId={WorkshopId}", userId, req.WorkshopId);
+
         var employerProfile = await db.EmployerProfiles
-            .FirstOrDefaultAsync(e => e.UserId == currentUser.UserId)
-            ?? throw new UnauthorizedAccessException("Employer profili bulunamadı.");
+            .FirstOrDefaultAsync(e => e.UserId == userId);
+
+        if (employerProfile == null)
+        {
+            logger.LogWarning("CreatePostAsync: EmployerProfile not found for userId={UserId}", userId);
+            throw new UnauthorizedAccessException("Employer profili bulunamadı.");
+        }
 
         _ = await db.Workshops
             .FirstOrDefaultAsync(w => w.Id == req.WorkshopId && w.EmployerId == employerProfile.UserId)
@@ -64,8 +75,10 @@ public class PostService(
 
     public async Task<PostResponse> UpdatePostAsync(Guid postId, UpdatePostRequest req)
     {
+        var userId = currentUser.UserId ?? throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı (token/sub claim eksik).");
+
         var employerProfile = await db.EmployerProfiles
-            .FirstOrDefaultAsync(e => e.UserId == currentUser.UserId)
+            .FirstOrDefaultAsync(e => e.UserId == userId)
             ?? throw new UnauthorizedAccessException();
 
         var post = await db.Posts
@@ -88,8 +101,10 @@ public class PostService(
 
     public async Task DeletePostAsync(Guid postId)
     {
+        var userId = currentUser.UserId ?? throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı (token/sub claim eksik).");
+
         var employerProfile = await db.EmployerProfiles
-            .FirstOrDefaultAsync(e => e.UserId == currentUser.UserId)
+            .FirstOrDefaultAsync(e => e.UserId == userId)
             ?? throw new UnauthorizedAccessException();
 
         var post = await db.Posts
@@ -111,8 +126,10 @@ public class PostService(
         IFormFile file,
         short orderIndex)
     {
+        var userId = currentUser.UserId ?? throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı (token/sub claim eksik).");
+
         var employerProfile = await db.EmployerProfiles
-            .FirstOrDefaultAsync(e => e.UserId == currentUser.UserId)
+            .FirstOrDefaultAsync(e => e.UserId == userId)
             ?? throw new UnauthorizedAccessException();
 
         _ = await db.Posts
@@ -159,8 +176,10 @@ public class PostService(
 
     public async Task DeleteMediaAsync(Guid postId, Guid mediaId)
     {
+        var userId = currentUser.UserId ?? throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı (token/sub claim eksik).");
+
         var employerProfile = await db.EmployerProfiles
-            .FirstOrDefaultAsync(e => e.UserId == currentUser.UserId)
+            .FirstOrDefaultAsync(e => e.UserId == userId)
             ?? throw new UnauthorizedAccessException();
 
         var media = await db.PostMedia
