@@ -16,6 +16,29 @@ public class CafeProfilesController(
     ICurrentUserService currentUser,
     IStorageProvider storage) : ControllerBase
 {
+    [HttpGet("dashboard")]
+    [Authorize(Policy = "RequireCafeRole")]
+    public async Task<IActionResult> GetDashboard()
+    {
+        if (currentUser.UserId == null)
+            return Unauthorized();
+
+        var profile = await db.CafeProfiles
+            .Include(p => p.CafeProfileCategories)
+            .Include(p => p.SpaceListings)
+            .FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
+
+        if (profile == null)
+            return NotFound();
+
+        return Ok(new CafeDashboardResponse
+        {
+            Name = profile.Name,
+            TotalListings = profile.SpaceListings.Count,
+            ActiveListings = profile.SpaceListings.Count(l => l.IsActive),
+            CategoryCount = profile.CafeProfileCategories.Count
+        });
+    }
     [HttpGet("me")]
     [Authorize(Policy = "RequireCafeRole")]
     public async Task<IActionResult> GetMyProfile()
