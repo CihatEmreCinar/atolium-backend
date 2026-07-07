@@ -15,4 +15,5 @@ public class Category
     public ICollection<Category> Children { get; set; } = [];
     public ICollection<WorkshopCategory> WorkshopCategories { get; set; } = [];
     public ICollection<EmployerProfileCategory> EmployerProfileCategories { get; set; } = [];
+    public ICollection<CafeProfileCategory> CafeProfileCategories { get; set; } = [];
 }

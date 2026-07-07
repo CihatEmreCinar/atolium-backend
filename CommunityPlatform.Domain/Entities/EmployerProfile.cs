@@ -17,4 +17,5 @@ public class EmployerProfile
     public User User { get; set; } = null!;
     public ICollection<EmployerProfileCategory> EmployerProfileCategories { get; set; } = [];
     public ICollection<Workshop> Workshops { get; set; } = [];
+    public ICollection<SpaceBooking> SpaceBookings { get; set; } = [];
 }

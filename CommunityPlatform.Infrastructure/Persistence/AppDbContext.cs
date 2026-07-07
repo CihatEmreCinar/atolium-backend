@@ -70,6 +70,20 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(c => c.EmployerProfileCategories)
             .HasForeignKey(ec => ec.CategoryId);
 
+        // ── CafeProfileCategory (mirror of EmployerProfileCategory)
+        modelBuilder.Entity<CafeProfileCategory>()
+            .HasKey(cc => new { cc.CafeProfileId, cc.CategoryId });
+
+        modelBuilder.Entity<CafeProfileCategory>()
+            .HasOne(cc => cc.CafeProfile)
+            .WithMany(p => p.CafeProfileCategories)
+            .HasForeignKey(cc => cc.CafeProfileId);
+
+        modelBuilder.Entity<CafeProfileCategory>()
+            .HasOne(cc => cc.Category)
+            .WithMany(c => c.CafeProfileCategories)
+            .HasForeignKey(cc => cc.CategoryId);
+
         // ── Seed ────────────────────────────────────────────────────────────
         modelBuilder.Entity<Category>().HasData(
             new Category { Id = Guid.Parse("11111111-1111-1111-1111-111111111111"), Name = "Seramik",       Slug = "seramik",       SortOrder = 1 },

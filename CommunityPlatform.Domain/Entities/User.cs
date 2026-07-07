@@ -24,6 +24,7 @@ public class User
     // Navigation
     public EmployerProfile? EmployerProfile { get; set; }
     public EmployeeProfile? EmployeeProfile { get; set; }
+    public CafeProfile? CafeProfile { get; set; }
     public ICollection<Enrollment> Enrollments { get; set; } = [];
     public ICollection<Review> Reviews { get; set; } = [];
     public ICollection<Notification> Notifications { get; set; } = [];

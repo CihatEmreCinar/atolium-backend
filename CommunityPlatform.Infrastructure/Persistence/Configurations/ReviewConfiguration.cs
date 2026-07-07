@@ -1,4 +1,5 @@
 using CommunityPlatform.Domain.Entities;
+using CommunityPlatform.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -10,6 +11,7 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
     {
         builder.HasKey(r => r.Id);
         builder.Property(r => r.Rating).IsRequired();
+        builder.Property(r => r.RevieweeType).HasConversion<string>().HasMaxLength(20).HasDefaultValue(RevieweeType.Employer);
         builder.ToTable(t => t.HasCheckConstraint("CK_Review_Rating", "\"Rating\" >= 1 AND \"Rating\" <= 5"));
         builder.HasIndex(r => new { r.WorkshopId, r.UserId }).IsUnique();
 
@@ -22,5 +24,10 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
             .WithMany(u => u.Reviews)
             .HasForeignKey(r => r.UserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(r => r.SpaceBooking)
+            .WithMany()
+            .HasForeignKey(r => r.SpaceBookingId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

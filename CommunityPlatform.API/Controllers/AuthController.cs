@@ -8,14 +8,21 @@ namespace CommunityPlatform.API.Controllers;
 [Route("api/v1/auth")]
 public class AuthController(AuthService authService) : ControllerBase
 {
-    [HttpPost("register")]
+   [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        var result = await authService.RegisterAsync(request);
-        if (result == null)
-            return Conflict(new { message = "Bu e-posta adresi zaten kayıtlı." });
+        try
+        {
+            var result = await authService.RegisterAsync(request);
+            if (result == null)
+                return Conflict(new { message = "Bu e-posta adresi zaten kayıtlı." });
 
-        return Ok(result);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("login")]

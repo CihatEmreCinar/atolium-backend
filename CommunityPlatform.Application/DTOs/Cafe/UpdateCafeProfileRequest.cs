@@ -6,4 +6,5 @@ public class UpdateCafeProfileRequest
     public string? Bio { get; set; }
     public string? City { get; set; }
     public string? Address { get; set; }
+    public List<Guid>? CategoryIds { get; set; }
 }

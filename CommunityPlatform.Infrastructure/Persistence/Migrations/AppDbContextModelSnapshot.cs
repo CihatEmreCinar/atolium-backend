@@ -106,6 +106,21 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.ToTable("CafeProfiles");
                 });
 
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.CafeProfileCategory", b =>
+                {
+                    b.Property<Guid>("CafeProfileId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("CafeProfileId", "CategoryId");
+
+                    b.HasIndex("CategoryId");
+
+                    b.ToTable("CafeProfileCategory");
+                });
+
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1160,6 +1175,25 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.CafeProfileCategory", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.CafeProfile", "CafeProfile")
+                        .WithMany("CafeProfileCategories")
+                        .HasForeignKey("CafeProfileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CommunityPlatform.Domain.Entities.Category", "Category")
+                        .WithMany("CafeProfileCategories")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CafeProfile");
+
+                    b.Navigation("Category");
+                });
+
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.Category", b =>
                 {
                     b.HasOne("CommunityPlatform.Domain.Entities.Category", "Parent")
@@ -1554,11 +1588,15 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.CafeProfile", b =>
                 {
+                    b.Navigation("CafeProfileCategories");
+
                     b.Navigation("SpaceListings");
                 });
 
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.Category", b =>
                 {
+                    b.Navigation("CafeProfileCategories");
+
                     b.Navigation("Children");
 
                     b.Navigation("EmployerProfileCategories");

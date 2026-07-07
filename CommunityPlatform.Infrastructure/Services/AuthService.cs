@@ -83,13 +83,15 @@ public class AuthService(AppDbContext db, JwtService jwtService)
         if (string.IsNullOrWhiteSpace(role))
             return "employee";
 
-        return role.Trim().ToLowerInvariant() switch
+        var normalized = role.Trim().ToLowerInvariant();
+
+        return normalized switch
         {
             "employer" => "employer",
             "employee" => "employee",
             "admin" => "admin",
             "cafe" => "cafe",
-            _ => role.Trim().ToLowerInvariant()
+            _ => throw new ArgumentException($"Geçersiz rol: '{role}'. Beklenen: employer, employee, admin, cafe.")
         };
     }
 

@@ -25,6 +25,8 @@ public class CafeProfilesController(
 
         var profile = await db.CafeProfiles
             .Include(p => p.User)
+            .Include(p => p.CafeProfileCategories)
+                .ThenInclude(cc => cc.Category)
             .FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
 
         if (profile == null)
@@ -42,6 +44,7 @@ public class CafeProfilesController(
 
         var profile = await db.CafeProfiles
             .Include(p => p.User)
+            .Include(p => p.CafeProfileCategories)
             .FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
 
         if (profile == null)
@@ -59,10 +62,29 @@ public class CafeProfilesController(
         if (request.Address != null)
             profile.Address = request.Address;
 
+        if (request.CategoryIds != null)
+        {
+            profile.CafeProfileCategories.Clear();
+            foreach (var categoryId in request.CategoryIds.Distinct())
+            {
+                profile.CafeProfileCategories.Add(new CafeProfileCategory
+                {
+                    CafeProfileId = profile.Id,
+                    CategoryId = categoryId
+                });
+            }
+        }
+
         profile.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
 
-        return Ok(MapToResponse(profile));
+        var updated = await db.CafeProfiles
+            .Include(p => p.User)
+            .Include(p => p.CafeProfileCategories)
+                .ThenInclude(cc => cc.Category)
+            .FirstAsync(p => p.UserId == currentUser.UserId);
+
+        return Ok(MapToResponse(updated));
     }
 
     [HttpPost("me/avatar")]
@@ -141,6 +163,8 @@ public class CafeProfilesController(
     {
         var profile = await db.CafeProfiles
             .Include(p => p.User)
+            .Include(p => p.CafeProfileCategories)
+                .ThenInclude(cc => cc.Category)
             .FirstOrDefaultAsync(p => p.UserId == id);
 
         if (profile == null)
@@ -158,5 +182,8 @@ public class CafeProfilesController(
         Address = profile.Address,
         AvatarUrl = profile.AvatarUrl,
         CoverImageUrl = profile.CoverImageUrl
+        ,
+        CategoryIds = profile.CafeProfileCategories?.Select(cc => cc.CategoryId).ToList() ?? new List<Guid>(),
+        CategoryNames = profile.CafeProfileCategories?.Select(cc => cc.Category.Name).ToList() ?? new List<string>()
     };
 }

@@ -22,5 +22,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasOne(u => u.EmployeeProfile)
             .WithOne(e => e.User)
             .HasForeignKey<EmployeeProfile>(e => e.UserId);
+
+        builder.HasOne(u => u.CafeProfile)
+            .WithOne(c => c.User)
+            .HasForeignKey<CafeProfile>(c => c.UserId);
     }
 }

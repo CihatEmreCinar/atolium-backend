@@ -17,4 +17,5 @@ public class CafeProfile
 
     public User User { get; set; } = null!;
     public ICollection<SpaceListing> SpaceListings { get; set; } = [];
+    public ICollection<CafeProfileCategory> CafeProfileCategories { get; set; } = [];
 }

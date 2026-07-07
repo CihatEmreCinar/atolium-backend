@@ -9,4 +9,6 @@ public class CafeProfileResponse
     public string? Address { get; set; }
     public string? AvatarUrl { get; set; }
     public string? CoverImageUrl { get; set; }
+    public List<Guid> CategoryIds { get; set; } = [];
+    public List<string> CategoryNames { get; set; } = [];
 }

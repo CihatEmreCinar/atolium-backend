@@ -62,7 +62,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireCafeRole", p => p.RequireRole("cafe"));
+    options.AddPolicy("RequireEmployerRole", p => p.RequireRole("employer"));
+});
 
 var app = builder.Build();
 

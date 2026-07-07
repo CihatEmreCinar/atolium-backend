@@ -11,7 +11,7 @@ namespace CommunityPlatform.API.Controllers;
 
 [ApiController]
 [Route("api/v1/employer")]
-[Authorize(Roles = "employer")]
+[Authorize(Policy = "RequireEmployerRole")]
 public class EmployerController(
     AppDbContext db,
     ICurrentUserService currentUser,
