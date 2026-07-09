@@ -220,6 +220,41 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.DeviceToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExpoPushToken")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Platform")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpoPushToken")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("DeviceTokens");
+                });
+
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.EmployeeProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -353,6 +388,46 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Enrollments");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.EventReminder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EventStartAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("OffsetMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("SentAt", "EventStartAt");
+
+                    b.HasIndex("SourceType", "SourceId");
+
+                    b.ToTable("EventReminders");
                 });
 
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.Notification", b =>
@@ -1203,6 +1278,17 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Navigation("Parent");
                 });
 
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.DeviceToken", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.EmployeeProfile", b =>
                 {
                     b.HasOne("CommunityPlatform.Domain.Entities.User", "User")
@@ -1267,6 +1353,17 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
 
                     b.Navigation("Workshop");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.EventReminder", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.Notification", b =>

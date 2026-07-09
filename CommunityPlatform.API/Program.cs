@@ -35,7 +35,9 @@ builder.Services.AddSingleton<IConnection>(_ =>
 
 builder.Services.AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IStorageProvider, LocalStorageProvider>();
+builder.Services.AddHttpClient(); // ReminderDispatchJob → Expo Push API
 // ─── Sosyal Feed Servisleri ───────────────────────────────────────────────────
 builder.Services.AddScoped<PostService>();
 builder.Services.AddScoped<SocialService>();
@@ -44,6 +46,7 @@ builder.Services.AddScoped<TagService>();
 
 // ─── Background Jobs ──────────────────────────────────────────────────────────
 builder.Services.AddHostedService<EngagementScoreJob>();
+builder.Services.AddHostedService<ReminderDispatchJob>();
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
