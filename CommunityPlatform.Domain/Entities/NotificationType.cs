@@ -21,5 +21,10 @@ public enum NotificationType
     NewFollower            = 30,
     PostLiked              = 31,
     PostCommented          = 32,
-    PostShared             = 33
+    PostShared             = 33,
+
+    // Alan rezervasyonu (space booking)
+    BookingRequested       = 40,
+    BookingApproved        = 41,
+    BookingRejected        = 42
 }
