@@ -1,6 +1,7 @@
 using CommunityPlatform.Application.DTOs.Enrollments;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
+using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,7 +15,8 @@ namespace CommunityPlatform.API.Controllers;
 public class EnrollmentsController(
     AppDbContext db,
     ICurrentUserService currentUser,
-    INotificationService notifications) : ControllerBase
+    INotificationService notifications,
+    IReminderService reminderService) : ControllerBase
 {
     // Employee atölyeye kayıt başvurusu yapar → "pending"
     [HttpPost]
@@ -170,6 +172,9 @@ public class EnrollmentsController(
         enrollment.Workshop.EnrolledCount += 1;
 
         await db.SaveChangesAsync();
+
+        await reminderService.CreateRemindersAsync(
+            enrollment.UserId, ReminderSourceType.Workshop, enrollment.WorkshopId, enrollment.Workshop.StartAt);
 
         await notifications.NotifyAsync(
             userId:    enrollment.UserId,

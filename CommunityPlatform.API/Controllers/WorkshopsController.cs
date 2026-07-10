@@ -1,6 +1,7 @@
 using CommunityPlatform.Application.DTOs.Workshops;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
+using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,7 @@ namespace CommunityPlatform.API.Controllers;
 
 [ApiController]
 [Route("api/v1/workshops")]
-public class WorkshopsController(AppDbContext db, ICurrentUserService currentUser) : ControllerBase
+public class WorkshopsController(AppDbContext db, ICurrentUserService currentUser, IReminderService reminderService) : ControllerBase
 {
     [HttpGet]
     [AllowAnonymous]
@@ -217,6 +218,12 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
 
         workshop.Status = request.Status;
         await db.SaveChangesAsync();
+
+        if (request.Status == "published")
+        {
+            await reminderService.CreateRemindersAsync(
+                workshop.EmployerId, ReminderSourceType.Workshop, workshop.Id, workshop.StartAt);
+        }
 
         return Ok(new { id = workshop.Id, status = workshop.Status });
     }

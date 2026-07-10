@@ -16,7 +16,8 @@ namespace CommunityPlatform.API.Controllers;
 public class SpaceBookingsController(
     AppDbContext db,
     ICurrentUserService currentUser,
-    INotificationService notifications) : ControllerBase
+    INotificationService notifications,
+    IReminderService reminderService) : ControllerBase
 {
     // Employer bir alan için rezervasyon talebi oluşturur → "Pending"
     [HttpPost]
@@ -172,6 +173,11 @@ public class SpaceBookingsController(
         booking.Status = SpaceBookingStatus.Approved;
         booking.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
+
+        await reminderService.CreateRemindersAsync(
+            booking.EmployerProfile.UserId, ReminderSourceType.SpaceBooking, booking.Id, booking.StartDateTime);
+        await reminderService.CreateRemindersAsync(
+            booking.SpaceListing.CafeProfile.UserId, ReminderSourceType.SpaceBooking, booking.Id, booking.StartDateTime);
 
         await notifications.NotifyAsync(
             userId:    booking.EmployerProfile.UserId,
