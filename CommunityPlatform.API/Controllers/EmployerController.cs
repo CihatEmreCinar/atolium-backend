@@ -143,7 +143,7 @@ public class EmployerController(
             .CountAsync(e => workshopIds.Contains(e.WorkshopId) && e.Status == "confirmed");
 
         var reviewCount = await db.Reviews
-            .CountAsync(r => workshopIds.Contains(r.WorkshopId));
+            .CountAsync(r => r.WorkshopId != null && workshopIds.Contains(r.WorkshopId.Value));
 
         var avgRating = workshops.Count != 0 && workshops.Any(w => w.ReviewCount > 0)
             ? workshops.Where(w => w.ReviewCount > 0).Average(w => w.AvgRating)

@@ -15,6 +15,7 @@ public class CafeProfileConfiguration : IEntityTypeConfiguration<CafeProfile>
         builder.Property(c => c.Address).HasMaxLength(500);
         builder.Property(c => c.AvatarUrl).HasMaxLength(500);
         builder.Property(c => c.CoverImageUrl).HasMaxLength(500);
+        builder.Property(c => c.AvgRating).HasColumnType("numeric(3,2)");
 
         builder.HasOne(c => c.User)
             .WithOne(u => u.CafeProfile)

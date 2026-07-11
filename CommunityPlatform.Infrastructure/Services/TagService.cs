@@ -1,10 +1,12 @@
 using CommunityPlatform.Application.DTOs.Feed;
+using CommunityPlatform.Application.Interfaces;
+using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace CommunityPlatform.Infrastructure.Services;
 
-public class TagService(AppDbContext db)
+public class TagService(AppDbContext db, ICurrentUserService currentUser)
 {
     // ─── Autocomplete (2.7) ──────────────────────────────────────────────────
 
@@ -69,12 +71,20 @@ public class TagService(AppDbContext db)
 
         var query = db.Posts
             .Where(p => p.PostTags.Any(pt => pt.TagId == tag.Id))
-            .Include(p => p.Employer).ThenInclude(e => e.User)
+            .Include(p => p.Employer).ThenInclude(e => e!.User)
             .Include(p => p.Workshop)
+            .Include(p => p.Cafe)
             .Include(p => p.Media.Where(m => m.ConfirmedAt != null))
             .Include(p => p.PostTags).ThenInclude(pt => pt.Tag)
             .Include(p => p.Likes)
             .AsNoTracking();
+
+        // Visibility filtresi: bu endpoint anonim erişime açık ve rol kontrolü yok —
+        // FeedService.BuildBaseQuery'deki aynı allow-list kural burada da uygulanmalı,
+        // yoksa Cafe'nin EmployersOnly post'u tag feed üzerinden herkese sızar.
+        var canSeeEmployersOnly = currentUser.Role == "employer" || currentUser.Role == "cafe";
+        if (!canSeeEmployersOnly)
+            query = query.Where(p => p.Visibility == PostVisibility.Public);
 
         if (!string.IsNullOrEmpty(cursor))
         {
@@ -98,11 +108,23 @@ public class TagService(AppDbContext db)
             Posts = posts.Select(p => new FeedPostResponse
             {
                 Id = p.Id,
-                EmployerId = p.EmployerId,
-                EmployerName = p.Employer.User.FirstName + " " + p.Employer.User.LastName,
-                EmployerAvatarUrl = p.Employer.User.AvatarUrl,
+
+                EmployerId = p.AuthorType == PostAuthorType.Employer ? p.EmployerId : null,
+                EmployerName = p.AuthorType == PostAuthorType.Employer && p.Employer != null
+                    ? p.Employer.User.FirstName + " " + p.Employer.User.LastName
+                    : null,
+                EmployerAvatarUrl = p.AuthorType == PostAuthorType.Employer ? p.Employer?.User.AvatarUrl : null,
+
+                CafeId = p.AuthorType == PostAuthorType.Cafe ? p.CafeId : null,
+                CafeName = p.AuthorType == PostAuthorType.Cafe ? p.Cafe?.Name : null,
+                CafeAvatarUrl = p.AuthorType == PostAuthorType.Cafe ? p.Cafe?.AvatarUrl : null,
+
                 WorkshopId = p.WorkshopId,
-                WorkshopTitle = p.Workshop.Title,
+                WorkshopTitle = p.Workshop != null ? p.Workshop.Title : null,
+
+                AuthorType = p.AuthorType.ToString(),
+                Visibility = p.Visibility.ToString(),
+
                 Caption = p.Caption,
                 LikeCount = p.LikeCount,
                 CommentCount = p.CommentCount,

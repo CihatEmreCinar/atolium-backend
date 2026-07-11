@@ -72,6 +72,9 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<decimal>("AvgRating")
+                        .HasColumnType("numeric(3,2)");
+
                     b.Property<string>("Bio")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -91,6 +94,9 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
+
+                    b.Property<int>("ReviewCount")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -532,6 +538,16 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AuthorType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Employer");
+
+                    b.Property<Guid?>("CafeId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Caption")
                         .HasColumnType("text");
 
@@ -541,7 +557,7 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("EmployerId")
+                    b.Property<Guid?>("EmployerId")
                         .HasColumnType("uuid");
 
                     b.Property<double>("EngagementScore")
@@ -564,10 +580,20 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Property<int>("ViewCount")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("WorkshopId")
+                    b.Property<string>("Visibility")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Public");
+
+                    b.Property<Guid?>("WorkshopId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CafeId")
+                        .HasDatabaseName("ix_posts_cafe_id");
 
                     b.HasIndex("PublishedAt")
                         .IsDescending()
@@ -583,7 +609,10 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.HasIndex("EmployerId", "EngagementScore", "Id")
                         .HasDatabaseName("ix_posts_feed_cursor");
 
-                    b.ToTable("posts", (string)null);
+                    b.ToTable("posts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Post_AuthorConsistency", "(\"AuthorType\" = 'Employer' AND \"EmployerId\" IS NOT NULL AND \"CafeId\" IS NULL) OR (\"AuthorType\" = 'Cafe' AND \"CafeId\" IS NOT NULL AND \"EmployerId\" IS NULL)");
+                        });
                 });
 
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.PostComment", b =>
@@ -821,21 +850,26 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("WorkshopId")
+                    b.Property<Guid?>("WorkshopId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SpaceBookingId");
-
                     b.HasIndex("UserId");
 
+                    b.HasIndex("SpaceBookingId", "UserId")
+                        .IsUnique()
+                        .HasFilter("\"SpaceBookingId\" IS NOT NULL");
+
                     b.HasIndex("WorkshopId", "UserId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"WorkshopId\" IS NOT NULL");
 
                     b.ToTable("Reviews", t =>
                         {
                             t.HasCheckConstraint("CK_Review_Rating", "\"Rating\" >= 1 AND \"Rating\" <= 5");
+
+                            t.HasCheckConstraint("CK_Review_RevieweeConsistency", "(\"RevieweeType\" = 'Employer' AND \"WorkshopId\" IS NOT NULL AND \"SpaceBookingId\" IS NULL) OR (\"RevieweeType\" = 'Cafe' AND \"SpaceBookingId\" IS NOT NULL AND \"WorkshopId\" IS NULL)");
                         });
                 });
 
@@ -1398,17 +1432,22 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.Post", b =>
                 {
+                    b.HasOne("CommunityPlatform.Domain.Entities.CafeProfile", "Cafe")
+                        .WithMany()
+                        .HasForeignKey("CafeId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("CommunityPlatform.Domain.Entities.EmployerProfile", "Employer")
                         .WithMany()
                         .HasForeignKey("EmployerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("CommunityPlatform.Domain.Entities.Workshop", "Workshop")
                         .WithMany()
                         .HasForeignKey("WorkshopId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Cafe");
 
                     b.Navigation("Employer");
 
@@ -1536,8 +1575,7 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.HasOne("CommunityPlatform.Domain.Entities.Workshop", "Workshop")
                         .WithMany("Reviews")
                         .HasForeignKey("WorkshopId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("SpaceBooking");
 

@@ -1,6 +1,7 @@
 using CommunityPlatform.Application.DTOs.Posts;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
+using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -25,22 +26,48 @@ public class PostService(
         var employerProfile = await db.EmployerProfiles
             .FirstOrDefaultAsync(e => e.UserId == userId);
 
-        if (employerProfile == null)
+        Post post;
+
+        if (employerProfile != null)
         {
-            logger.LogWarning("CreatePostAsync: EmployerProfile not found for userId={UserId}", userId);
-            throw new UnauthorizedAccessException("Employer profili bulunamadı.");
+            // ── Mevcut Employer akışı — DOKUNULMADI ──────────────────────────
+            _ = await db.Workshops
+                .FirstOrDefaultAsync(w => w.Id == req.WorkshopId && w.EmployerId == employerProfile.UserId)
+                ?? throw new KeyNotFoundException("Workshop bulunamadı veya bu employer'a ait değil.");
+
+            post = new Post
+            {
+                EmployerId = employerProfile.Id,
+                WorkshopId = req.WorkshopId,
+                CafeId = null,
+                AuthorType = PostAuthorType.Employer,
+                Visibility = PostVisibility.Public,
+                Caption = req.Caption,
+            };
         }
-
-        _ = await db.Workshops
-            .FirstOrDefaultAsync(w => w.Id == req.WorkshopId && w.EmployerId == employerProfile.UserId)
-            ?? throw new KeyNotFoundException("Workshop bulunamadı veya bu employer'a ait değil.");
-
-        var post = new Post
+        else
         {
-            EmployerId = employerProfile.Id,
-            WorkshopId = req.WorkshopId,
-            Caption = req.Caption,
-        };
+            // ── Yeni Cafe akışı ───────────────────────────────────────────────
+            var cafeProfile = await db.CafeProfiles
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            if (cafeProfile == null)
+            {
+                logger.LogWarning("CreatePostAsync: Ne EmployerProfile ne CafeProfile bulunamadı, userId={UserId}", userId);
+                throw new UnauthorizedAccessException("Employer veya Cafe profili bulunamadı.");
+            }
+
+            post = new Post
+            {
+                EmployerId = null,
+                WorkshopId = null,
+                CafeId = cafeProfile.Id,
+                AuthorType = PostAuthorType.Cafe,
+                // Cafe post'u HER ZAMAN EmployersOnly — request'ten gelen değer kullanılmaz.
+                Visibility = PostVisibility.EmployersOnly,
+                Caption = req.Caption,
+            };
+        }
 
         db.Posts.Add(post);
         await db.SaveChangesAsync();
@@ -57,8 +84,9 @@ public class PostService(
         var userId = currentUser.UserId;
 
         var post = await db.Posts
-            .Include(p => p.Employer).ThenInclude(e => e.User)
+            .Include(p => p.Employer).ThenInclude(e => e!.User)
             .Include(p => p.Workshop)
+            .Include(p => p.Cafe)
             .Include(p => p.Media.Where(m => m.ConfirmedAt != null))
             .Include(p => p.PostTags).ThenInclude(pt => pt.Tag)
             .Include(p => p.Likes)
@@ -67,8 +95,20 @@ public class PostService(
 
         if (post == null) return null;
 
-        var isFollowing = userId != null && await db.UserFollows
-            .AnyAsync(f => f.FollowerId == userId && f.FollowedId == post.Employer.UserId);
+        // EmployersOnly bir Cafe post'una feed dışından (direkt link/ID) erişimi de
+        // engelle — aksi halde feed'deki visibility filtresi anlamsızlaşır.
+        var canSeeEmployersOnly = currentUser.Role == "employer" || currentUser.Role == "cafe";
+        if (post.Visibility == PostVisibility.EmployersOnly && !canSeeEmployersOnly)
+            return null;
+
+        // NOT: post.Employer.UserId'ye direkt erişmek Cafe post'larında NullReferenceException
+        // fırlatırdı — AuthorType'a göre doğru sahibi (Employer ya da Cafe) seç.
+        var ownerUserId = post.AuthorType == PostAuthorType.Cafe
+            ? post.Cafe?.UserId
+            : post.Employer?.UserId;
+
+        var isFollowing = userId != null && ownerUserId != null && await db.UserFollows
+            .AnyAsync(f => f.FollowerId == userId && f.FollowedId == ownerUserId.Value);
 
         return MapToResponse(post, userId, isFollowing);
     }
@@ -78,13 +118,28 @@ public class PostService(
         var userId = currentUser.UserId ?? throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı (token/sub claim eksik).");
 
         var employerProfile = await db.EmployerProfiles
-            .FirstOrDefaultAsync(e => e.UserId == userId)
-            ?? throw new UnauthorizedAccessException();
+            .FirstOrDefaultAsync(e => e.UserId == userId);
 
-        var post = await db.Posts
-            .Include(p => p.PostTags)
-            .FirstOrDefaultAsync(p => p.Id == postId && p.EmployerId == employerProfile.Id)
-            ?? throw new KeyNotFoundException("Post bulunamadı.");
+        Post post;
+
+        if (employerProfile != null)
+        {
+            post = await db.Posts
+                .Include(p => p.PostTags)
+                .FirstOrDefaultAsync(p => p.Id == postId && p.EmployerId == employerProfile.Id)
+                ?? throw new KeyNotFoundException("Post bulunamadı.");
+        }
+        else
+        {
+            var cafeProfile = await db.CafeProfiles
+                .FirstOrDefaultAsync(c => c.UserId == userId)
+                ?? throw new UnauthorizedAccessException();
+
+            post = await db.Posts
+                .Include(p => p.PostTags)
+                .FirstOrDefaultAsync(p => p.Id == postId && p.CafeId == cafeProfile.Id)
+                ?? throw new KeyNotFoundException("Post bulunamadı.");
+        }
 
         post.Caption = req.Caption;
         post.UpdatedAt = DateTime.UtcNow;
@@ -104,13 +159,28 @@ public class PostService(
         var userId = currentUser.UserId ?? throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı (token/sub claim eksik).");
 
         var employerProfile = await db.EmployerProfiles
-            .FirstOrDefaultAsync(e => e.UserId == userId)
-            ?? throw new UnauthorizedAccessException();
+            .FirstOrDefaultAsync(e => e.UserId == userId);
 
-        var post = await db.Posts
-            .Include(p => p.Media)
-            .FirstOrDefaultAsync(p => p.Id == postId && p.EmployerId == employerProfile.Id)
-            ?? throw new KeyNotFoundException("Post bulunamadı.");
+        Post post;
+
+        if (employerProfile != null)
+        {
+            post = await db.Posts
+                .Include(p => p.Media)
+                .FirstOrDefaultAsync(p => p.Id == postId && p.EmployerId == employerProfile.Id)
+                ?? throw new KeyNotFoundException("Post bulunamadı.");
+        }
+        else
+        {
+            var cafeProfile = await db.CafeProfiles
+                .FirstOrDefaultAsync(c => c.UserId == userId)
+                ?? throw new UnauthorizedAccessException();
+
+            post = await db.Posts
+                .Include(p => p.Media)
+                .FirstOrDefaultAsync(p => p.Id == postId && p.CafeId == cafeProfile.Id)
+                ?? throw new KeyNotFoundException("Post bulunamadı.");
+        }
 
         foreach (var media in post.Media)
             await storage.DeleteAsync(media.StorageKey);
@@ -129,12 +199,24 @@ public class PostService(
         var userId = currentUser.UserId ?? throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı (token/sub claim eksik).");
 
         var employerProfile = await db.EmployerProfiles
-            .FirstOrDefaultAsync(e => e.UserId == userId)
-            ?? throw new UnauthorizedAccessException();
+            .FirstOrDefaultAsync(e => e.UserId == userId);
 
-        _ = await db.Posts
-            .FirstOrDefaultAsync(p => p.Id == postId && p.EmployerId == employerProfile.Id)
-            ?? throw new KeyNotFoundException("Post bulunamadı.");
+        if (employerProfile != null)
+        {
+            _ = await db.Posts
+                .FirstOrDefaultAsync(p => p.Id == postId && p.EmployerId == employerProfile.Id)
+                ?? throw new KeyNotFoundException("Post bulunamadı.");
+        }
+        else
+        {
+            var cafeProfile = await db.CafeProfiles
+                .FirstOrDefaultAsync(c => c.UserId == userId)
+                ?? throw new UnauthorizedAccessException();
+
+            _ = await db.Posts
+                .FirstOrDefaultAsync(p => p.Id == postId && p.CafeId == cafeProfile.Id)
+                ?? throw new KeyNotFoundException("Post bulunamadı.");
+        }
 
         var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "video/mp4" };
         if (!allowedTypes.Contains(file.ContentType))
@@ -179,15 +261,32 @@ public class PostService(
         var userId = currentUser.UserId ?? throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı (token/sub claim eksik).");
 
         var employerProfile = await db.EmployerProfiles
-            .FirstOrDefaultAsync(e => e.UserId == userId)
-            ?? throw new UnauthorizedAccessException();
+            .FirstOrDefaultAsync(e => e.UserId == userId);
 
-        var media = await db.PostMedia
-            .Include(m => m.Post)
-            .FirstOrDefaultAsync(m => m.Id == mediaId
-                && m.PostId == postId
-                && m.Post.EmployerId == employerProfile.Id)
-            ?? throw new KeyNotFoundException("Medya bulunamadı.");
+        PostMedia media;
+
+        if (employerProfile != null)
+        {
+            media = await db.PostMedia
+                .Include(m => m.Post)
+                .FirstOrDefaultAsync(m => m.Id == mediaId
+                    && m.PostId == postId
+                    && m.Post.EmployerId == employerProfile.Id)
+                ?? throw new KeyNotFoundException("Medya bulunamadı.");
+        }
+        else
+        {
+            var cafeProfile = await db.CafeProfiles
+                .FirstOrDefaultAsync(c => c.UserId == userId)
+                ?? throw new UnauthorizedAccessException();
+
+            media = await db.PostMedia
+                .Include(m => m.Post)
+                .FirstOrDefaultAsync(m => m.Id == mediaId
+                    && m.PostId == postId
+                    && m.Post.CafeId == cafeProfile.Id)
+                ?? throw new KeyNotFoundException("Medya bulunamadı.");
+        }
 
         await storage.DeleteAsync(media.StorageKey);
         db.PostMedia.Remove(media);
@@ -227,14 +326,28 @@ public class PostService(
 
     // FIX: Static değil, Include + in-memory map
     // isFollowing ayrı parametre — çünkü UserFollow sorgusu burada yapılamaz (static context yok)
+    // FIX (Cafe post desteği): p.Employer / p.Workshop artık nullable — AuthorType'a göre
+    // hangi taraf doluysa onu oku, null-conditional erişim kullan.
     internal static PostResponse MapToResponse(Post p, Guid? userId, bool isFollowing = false) => new()
     {
         Id = p.Id,
-        EmployerId = p.EmployerId,
-        EmployerName = p.Employer.User.FirstName + " " + p.Employer.User.LastName,
-        EmployerAvatarUrl = p.Employer.User.AvatarUrl,
+
+        EmployerId = p.AuthorType == PostAuthorType.Employer ? p.EmployerId : null,
+        EmployerName = p.AuthorType == PostAuthorType.Employer && p.Employer != null
+            ? p.Employer.User.FirstName + " " + p.Employer.User.LastName
+            : null,
+        EmployerAvatarUrl = p.AuthorType == PostAuthorType.Employer ? p.Employer?.User.AvatarUrl : null,
+
+        CafeId = p.AuthorType == PostAuthorType.Cafe ? p.CafeId : null,
+        CafeName = p.AuthorType == PostAuthorType.Cafe ? p.Cafe?.Name : null,
+        CafeAvatarUrl = p.AuthorType == PostAuthorType.Cafe ? p.Cafe?.AvatarUrl : null,
+
         WorkshopId = p.WorkshopId,
-        WorkshopTitle = p.Workshop.Title,
+        WorkshopTitle = p.Workshop?.Title,
+
+        AuthorType = p.AuthorType.ToString(),
+        Visibility = p.Visibility.ToString(),
+
         Caption = p.Caption,
         LikeCount = p.LikeCount,
         CommentCount = p.CommentCount,
@@ -269,21 +382,38 @@ public class PostService(
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.UserId == userId);
 
-        // Employer profili yoksa (employee kullanıcı) boş liste dön
-        if (employerProfile == null)
+        IQueryable<Post> query;
+
+        if (employerProfile != null)
         {
-            return new PostListResponse
+            // ── Mevcut Employer akışı — DOKUNULMADI ──────────────────────────
+            query = db.Posts.Where(p => p.EmployerId == employerProfile.Id);
+        }
+        else
+        {
+            // Employer profili yoksa Cafe profiline bak
+            var cafeProfile = await db.CafeProfiles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.UserId == userId);
+
+            // Ne Employer ne Cafe ise (employee kullanıcı) boş liste dön
+            if (cafeProfile == null)
             {
-                Posts = new List<PostResponse>(),
-                NextCursor = null,
-                HasNextPage = false
-            };
+                return new PostListResponse
+                {
+                    Posts = new List<PostResponse>(),
+                    NextCursor = null,
+                    HasNextPage = false
+                };
+            }
+
+            query = db.Posts.Where(p => p.CafeId == cafeProfile.Id);
         }
 
-        var query = db.Posts
-            .Where(p => p.EmployerId == employerProfile.Id)
-            .Include(p => p.Employer).ThenInclude(e => e.User)
+        query = query
+            .Include(p => p.Employer).ThenInclude(e => e!.User)
             .Include(p => p.Workshop)
+            .Include(p => p.Cafe)
             .Include(p => p.Media.Where(m => m.ConfirmedAt != null))
             .Include(p => p.PostTags).ThenInclude(pt => pt.Tag)
             .Include(p => p.Likes)

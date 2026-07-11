@@ -175,7 +175,7 @@ public class ReviewsController(AppDbContext db, ICurrentUserService currentUser)
     private static ReviewResponse MapToResponse(Review r) => new()
     {
         Id = r.Id,
-        WorkshopId = r.WorkshopId,
+        WorkshopId = r.WorkshopId!.Value,
         UserId = r.UserId,
         UserName = $"{r.User.FirstName} {r.User.LastName}",
         Rating = r.Rating,

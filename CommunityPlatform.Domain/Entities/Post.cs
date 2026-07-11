@@ -1,12 +1,21 @@
 namespace CommunityPlatform.Domain.Entities;
 
+using CommunityPlatform.Domain.Enums;
+
 public class Post
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    // Zorunlu FK'lar
-    public Guid EmployerId { get; set; }
-    public Guid WorkshopId { get; set; }
+    // Employer post'ları için dolu, Cafe post'ları için null (ve tam tersi) —
+    // bkz. PostConfiguration.CK_Post_AuthorConsistency
+    public Guid? EmployerId { get; set; }
+    public Guid? WorkshopId { get; set; }
+
+    // Cafe post'ları için dolu, Employer post'ları için null
+    public Guid? CafeId { get; set; }
+
+    public PostAuthorType AuthorType { get; set; } = PostAuthorType.Employer;
+    public PostVisibility Visibility { get; set; } = PostVisibility.Public;
 
     public string? Caption { get; set; }
 
@@ -24,8 +33,9 @@ public class Post
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
-    public EmployerProfile Employer { get; set; } = null!;
-    public Workshop Workshop { get; set; } = null!;
+    public EmployerProfile? Employer { get; set; }
+    public Workshop? Workshop { get; set; }
+    public CafeProfile? Cafe { get; set; }
     public ICollection<PostMedia> Media { get; set; } = new List<PostMedia>();
     public ICollection<PostTag> PostTags { get; set; } = new List<PostTag>();
     public ICollection<PostLike> Likes { get; set; } = new List<PostLike>();

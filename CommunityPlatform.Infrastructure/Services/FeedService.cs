@@ -1,6 +1,7 @@
 using CommunityPlatform.Application.DTOs.Feed;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
+using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -67,10 +68,14 @@ public class FeedService(
     {
         var userId = currentUser.UserId;
 
+        // NOT: WorkshopId sadece Employer post'larında dolu olduğundan, Cafe post'ları
+        // bu filtreye zaten hiç girmiyor — dokunmaya gerek yok. Include(p => p.Cafe)
+        // yine de eklendi ki MapToFeedPost'un null-safe AuthorType kontrolü tutarlı kalsın.
         var query = db.Posts
             .Where(p => p.WorkshopId == workshopId)
-            .Include(p => p.Employer).ThenInclude(e => e.User)
+            .Include(p => p.Employer).ThenInclude(e => e!.User)
             .Include(p => p.Workshop)
+            .Include(p => p.Cafe)
             .Include(p => p.Media.Where(m => m.ConfirmedAt != null))
             .Include(p => p.PostTags).ThenInclude(pt => pt.Tag)
             .Include(p => p.Likes)
@@ -90,17 +95,28 @@ public class FeedService(
         Guid? workshopId)
     {
         var query = db.Posts
-            .Include(p => p.Employer).ThenInclude(e => e.User)
+            .Include(p => p.Employer).ThenInclude(e => e!.User)
             .Include(p => p.Workshop)
+            .Include(p => p.Cafe)
             .Include(p => p.Media.Where(m => m.ConfirmedAt != null))
             .Include(p => p.PostTags).ThenInclude(pt => pt.Tag)
             .Include(p => p.Likes)
             .AsNoTracking()
             .AsQueryable();
 
-        // Employer filtresi (following feed için)
+        // Visibility filtresi: EmployersOnly (Cafe) postlarını sadece employer/cafe rolü görebilir.
+        // Allow-list olarak yazıldı (deny-list "role == employee" yerine) çünkü
+        // GetExploreFeedAsync ve GetWorkshopFeedAsync [AllowAnonymous] — anonim istekte
+        // Role null gelir ve "employee" değildir, deny-list bu durumu kaçırıp EmployersOnly
+        // içeriği herkese açık şekilde sızdırırdı.
+        var canSeeEmployersOnly = currentUser.Role == "employer" || currentUser.Role == "cafe";
+        if (!canSeeEmployersOnly)
+            query = query.Where(p => p.Visibility == PostVisibility.Public);
+
+        // Employer filtresi (following feed için) — Cafe post'larının EmployerId'si
+        // null olduğundan bu filtre onları zaten doğal olarak eler.
         if (employerIds is { Count: > 0 })
-            query = query.Where(p => employerIds.Contains(p.EmployerId));
+            query = query.Where(p => p.EmployerId != null && employerIds.Contains(p.EmployerId.Value));
 
         // Workshop filtresi
         if (workshopId.HasValue)
@@ -150,11 +166,20 @@ public class FeedService(
         if (posts.Count == 0)
             return new FeedResponse { Posts = new(), HasNextPage = false };
 
-        // IsFollowing toplu çek — N+1 önle
-        var employerUserIds = posts.Select(p => p.Employer.UserId).Distinct().ToList();
+        // IsFollowing toplu çek — N+1 önle.
+        // FIX (Cafe post desteği): post sahibinin User.Id'si artık AuthorType'a göre
+        // Employer ya da Cafe'den geliyor — eskisi gibi sadece p.Employer.UserId okumak
+        // Cafe post'larında NullReferenceException fırlatırdı.
+        var ownerUserIds = posts
+            .Select(p => p.AuthorType == PostAuthorType.Cafe ? p.Cafe?.UserId : p.Employer?.UserId)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+
         var followingSet = userId != null
             ? await db.UserFollows
-                .Where(f => f.FollowerId == userId && employerUserIds.Contains(f.FollowedId))
+                .Where(f => f.FollowerId == userId && ownerUserIds.Contains(f.FollowedId))
                 .Select(f => f.FollowedId)
                 .ToHashSetAsync()
             : new HashSet<Guid>();
@@ -173,37 +198,54 @@ public class FeedService(
 
     // ─── Mapping ─────────────────────────────────────────────────────────────
 
-    private static FeedPostResponse MapToFeedPost(Post p, Guid? userId, HashSet<Guid> followingSet) => new()
+    private static FeedPostResponse MapToFeedPost(Post p, Guid? userId, HashSet<Guid> followingSet)
     {
-        Id = p.Id,
-        EmployerId = p.EmployerId,
-        EmployerName = p.Employer.User.FirstName + " " + p.Employer.User.LastName,
-        EmployerAvatarUrl = p.Employer.User.AvatarUrl,
-        WorkshopId = p.WorkshopId,
-        WorkshopTitle = p.Workshop.Title,
-        Caption = p.Caption,
-        LikeCount = p.LikeCount,
-        CommentCount = p.CommentCount,
-        ShareCount = p.ShareCount,
-        ViewCount = p.ViewCount,
-        EngagementScore = p.EngagementScore,
-        IsLikedByMe = userId != null && p.Likes.Any(l => l.UserId == userId),
-        IsFollowingEmployer = followingSet.Contains(p.Employer.UserId),
-        Media = p.Media
-            .Where(m => m.ConfirmedAt != null)
-            .OrderBy(m => m.OrderIndex)
-            .Select(m => new FeedMediaResponse
-            {
-                Id = m.Id,
-                MediaType = m.MediaType.ToString(),
-                Url = m.CdnUrl,
-                OrderIndex = m.OrderIndex,
-                WidthPx = m.WidthPx,
-                HeightPx = m.HeightPx
-            }).ToList(),
-        Tags = p.PostTags.Select(pt => pt.Tag.Slug).ToList(),
-        PublishedAt = p.PublishedAt
-    };
+        var ownerUserId = p.AuthorType == PostAuthorType.Cafe ? p.Cafe?.UserId : p.Employer?.UserId;
+
+        return new FeedPostResponse
+        {
+            Id = p.Id,
+
+            EmployerId = p.AuthorType == PostAuthorType.Employer ? p.EmployerId : null,
+            EmployerName = p.AuthorType == PostAuthorType.Employer && p.Employer != null
+                ? p.Employer.User.FirstName + " " + p.Employer.User.LastName
+                : null,
+            EmployerAvatarUrl = p.AuthorType == PostAuthorType.Employer ? p.Employer?.User.AvatarUrl : null,
+
+            CafeId = p.AuthorType == PostAuthorType.Cafe ? p.CafeId : null,
+            CafeName = p.AuthorType == PostAuthorType.Cafe ? p.Cafe?.Name : null,
+            CafeAvatarUrl = p.AuthorType == PostAuthorType.Cafe ? p.Cafe?.AvatarUrl : null,
+
+            WorkshopId = p.WorkshopId,
+            WorkshopTitle = p.Workshop?.Title,
+
+            AuthorType = p.AuthorType.ToString(),
+            Visibility = p.Visibility.ToString(),
+
+            Caption = p.Caption,
+            LikeCount = p.LikeCount,
+            CommentCount = p.CommentCount,
+            ShareCount = p.ShareCount,
+            ViewCount = p.ViewCount,
+            EngagementScore = p.EngagementScore,
+            IsLikedByMe = userId != null && p.Likes.Any(l => l.UserId == userId),
+            IsFollowingEmployer = ownerUserId != null && followingSet.Contains(ownerUserId.Value),
+            Media = p.Media
+                .Where(m => m.ConfirmedAt != null)
+                .OrderBy(m => m.OrderIndex)
+                .Select(m => new FeedMediaResponse
+                {
+                    Id = m.Id,
+                    MediaType = m.MediaType.ToString(),
+                    Url = m.CdnUrl,
+                    OrderIndex = m.OrderIndex,
+                    WidthPx = m.WidthPx,
+                    HeightPx = m.HeightPx
+                }).ToList(),
+            Tags = p.PostTags.Select(pt => pt.Tag.Slug).ToList(),
+            PublishedAt = p.PublishedAt
+        };
+    }
 
     // ─── Cursor encoding ─────────────────────────────────────────────────────
 

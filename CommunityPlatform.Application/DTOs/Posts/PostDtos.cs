@@ -4,7 +4,8 @@ namespace CommunityPlatform.Application.DTOs.Posts;
 
 public class CreatePostRequest
 {
-    public Guid WorkshopId { get; set; }
+    // Employer post'u için zorunlu, Cafe post'u için gönderilmez (null).
+    public Guid? WorkshopId { get; set; }
     public string? Caption { get; set; }
     public List<string> TagSlugs { get; set; } = new();
 }
@@ -27,11 +28,24 @@ public class ConfirmMediaRequest
 public class PostResponse
 {
     public Guid Id { get; set; }
-    public Guid EmployerId { get; set; }
-    public string EmployerName { get; set; } = null!;
+
+    // AuthorType == Employer ise dolu, Cafe ise null
+    public Guid? EmployerId { get; set; }
+    public string? EmployerName { get; set; }
     public string? EmployerAvatarUrl { get; set; }
-    public Guid WorkshopId { get; set; }
-    public string WorkshopTitle { get; set; } = null!;
+
+    // AuthorType == Cafe ise dolu, Employer ise null
+    public Guid? CafeId { get; set; }
+    public string? CafeName { get; set; }
+    public string? CafeAvatarUrl { get; set; }
+
+    // Employer post'u ise dolu, Cafe post'u ise null
+    public Guid? WorkshopId { get; set; }
+    public string? WorkshopTitle { get; set; }
+
+    public string AuthorType { get; set; } = null!;
+    public string Visibility { get; set; } = null!;
+
     public string? Caption { get; set; }
     public int LikeCount { get; set; }
     public int CommentCount { get; set; }

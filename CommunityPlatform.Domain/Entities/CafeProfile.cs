@@ -12,6 +12,8 @@ public class CafeProfile
     public string? Address { get; set; }
     public string? AvatarUrl { get; set; }
     public string? CoverImageUrl { get; set; }
+    public decimal AvgRating { get; set; } = 0;
+    public int ReviewCount { get; set; } = 0;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

@@ -1,4 +1,5 @@
 using CommunityPlatform.Domain.Entities;
+using CommunityPlatform.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,15 +18,40 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         builder.Property(p => p.Caption).HasColumnType("text");
         builder.Property(p => p.EngagementScore).HasDefaultValue(0.0);
 
+        builder.Property(p => p.AuthorType)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(PostAuthorType.Employer);
+
+        builder.Property(p => p.Visibility)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(PostVisibility.Public);
+
+        // Employer post'u: EmployerId dolu + CafeId null. Cafe post'u: CafeId dolu + EmployerId null.
+        builder.ToTable(t => t.HasCheckConstraint(
+            "CK_Post_AuthorConsistency",
+            "(\"AuthorType\" = 'Employer' AND \"EmployerId\" IS NOT NULL AND \"CafeId\" IS NULL) " +
+            "OR (\"AuthorType\" = 'Cafe' AND \"CafeId\" IS NOT NULL AND \"EmployerId\" IS NULL)"
+        ));
+
         builder.HasOne(p => p.Employer)
             .WithMany()
             .HasForeignKey(p => p.EmployerId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(p => p.Workshop)
             .WithMany()
             .HasForeignKey(p => p.WorkshopId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(p => p.Cafe)
+            .WithMany()
+            .HasForeignKey(p => p.CafeId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(p => new { p.EmployerId, p.EngagementScore, p.Id })
             .HasDatabaseName("ix_posts_feed_cursor");
@@ -36,6 +62,9 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
 
         builder.HasIndex(p => p.WorkshopId)
             .HasDatabaseName("ix_posts_workshop_id");
+
+        builder.HasIndex(p => p.CafeId)
+            .HasDatabaseName("ix_posts_cafe_id");
 
         builder.HasIndex(p => new { p.EngagementScore, p.Id })
             .IsDescending()

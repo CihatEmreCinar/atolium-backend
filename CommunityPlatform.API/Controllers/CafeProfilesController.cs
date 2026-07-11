@@ -1,5 +1,6 @@
 using CommunityPlatform.Application.DTOs.Cafe;
 using CommunityPlatform.Application.DTOs.Media;
+using CommunityPlatform.Application.DTOs.Reviews;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
 using CommunityPlatform.Infrastructure.Persistence;
@@ -121,9 +122,9 @@ public class CafeProfilesController(
         if (file.Length == 0)
             return BadRequest(new { message = "Dosya boş olamaz." });
 
-        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+        var allowedTypes = new[] { "image/heif","image/heic","image/jpeg", "image/png", "image/webp" };
         if (!allowedTypes.Contains(file.ContentType))
-            return BadRequest(new { message = "Sadece JPEG, PNG veya WEBP yükleyebilirsiniz." });
+            return BadRequest(new { message = "Sadece HEIC,HEIF,JPEG, PNG veya WEBP yükleyebilirsiniz." });
 
         var profile = await db.CafeProfiles.FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
         if (profile == null)
@@ -194,6 +195,37 @@ public class CafeProfilesController(
             return NotFound();
 
         return Ok(MapToResponse(profile));
+    }
+
+    // Herkes bir cafe'nin yorumlarını görebilir (gizli olanlar hariç)
+    [HttpGet("{id}/reviews")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetReviews(Guid id, [FromQuery] int page = 1, [FromQuery] int limit = 20)
+    {
+        var cafeProfile = await db.CafeProfiles.FirstOrDefaultAsync(p => p.UserId == id);
+        if (cafeProfile == null)
+            return NotFound(new { message = "Cafe profili bulunamadı." });
+
+        var reviews = await db.Reviews
+            .Include(r => r.User)
+            .Where(r => r.SpaceBooking!.SpaceListing.CafeProfileId == cafeProfile.Id && r.IsVisible)
+            .OrderByDescending(r => r.CreatedAt)
+            .Skip((page - 1) * limit)
+            .Take(limit)
+            .Select(r => new CafeReviewResponse
+            {
+                Id = r.Id,
+                SpaceBookingId = r.SpaceBookingId!.Value,
+                UserId = r.UserId,
+                UserName = r.User.FirstName + " " + r.User.LastName,
+                Rating = r.Rating,
+                Comment = r.Comment,
+                EmployerReply = r.EmployerReply,
+                CreatedAt = r.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(reviews);
     }
 
     private static CafeProfileResponse MapToResponse(CafeProfile profile) => new()

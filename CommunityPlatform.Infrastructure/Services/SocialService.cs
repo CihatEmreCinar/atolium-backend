@@ -1,6 +1,7 @@
 using CommunityPlatform.Application.DTOs.Social;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
+using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -26,6 +27,7 @@ public class SocialService(
 
         var post = await db.Posts
             .Include(p => p.Employer)
+            .Include(p => p.Cafe)
             .FirstOrDefaultAsync(p => p.Id == postId)
             ?? throw new KeyNotFoundException("Post bulunamadı.");
 
@@ -49,9 +51,11 @@ public class SocialService(
 
         var likeCount = await db.PostLikes.CountAsync(l => l.PostId == postId);
 
-        // Bildirim: like atılınca post sahibine gönder.
+        // Bildirim: like atılınca post sahibine gönder (Employer ya da Cafe).
         // Kendi postuna like atan kullanıcıya ve unlike durumunda gönderme.
-        if (nowLiked && post.Employer.UserId != userId)
+        var likeOwnerUserId = post.AuthorType == PostAuthorType.Cafe ? post.Cafe?.UserId : post.Employer?.UserId;
+
+        if (nowLiked && likeOwnerUserId != null && likeOwnerUserId != userId)
         {
             var liker = await db.Users
                 .AsNoTracking()
@@ -60,7 +64,7 @@ public class SocialService(
                 .FirstOrDefaultAsync();
 
             await notifications.NotifyAsync(
-                userId:    post.Employer.UserId,
+                userId:    likeOwnerUserId.Value,
                 type:      NotificationType.PostLiked,
                 title:     "Gönderiniz beğenildi",
                 body:      $"{liker?.FirstName} {liker?.LastName} gönderinizi beğendi.",
@@ -126,6 +130,7 @@ public class SocialService(
 
         var post = await db.Posts
             .Include(p => p.Employer)
+            .Include(p => p.Cafe)
             .FirstOrDefaultAsync(p => p.Id == postId)
             ?? throw new KeyNotFoundException("Post bulunamadı.");
 
@@ -158,9 +163,11 @@ public class SocialService(
             .AsNoTracking()
             .FirstAsync(c => c.Id == comment.Id);
 
-        // Bildirim: post sahibine yorum geldi.
+        // Bildirim: post sahibine yorum geldi (Employer ya da Cafe).
         // Kendi postuna yorum yapan kullanıcıya ve reply durumunda parent yorum sahibine de gönder.
-        if (post.Employer.UserId != userId)
+        var commentOwnerUserId = post.AuthorType == PostAuthorType.Cafe ? post.Cafe?.UserId : post.Employer?.UserId;
+
+        if (commentOwnerUserId != null && commentOwnerUserId != userId)
         {
             var commenter = await db.Users
                 .AsNoTracking()
@@ -169,7 +176,7 @@ public class SocialService(
                 .FirstOrDefaultAsync();
 
             await notifications.NotifyAsync(
-                userId:    post.Employer.UserId,
+                userId:    commentOwnerUserId.Value,
                 type:      NotificationType.PostCommented,
                 title:     "Yeni yorum",
                 body:      $"{commenter?.FirstName} {commenter?.LastName} gönderinize yorum yaptı: \"{Truncate(req.Content)}\"",
@@ -189,7 +196,7 @@ public class SocialService(
 
             if (parentComment is not null
                 && parentComment.AuthorId != userId
-                && parentComment.AuthorId != post.Employer.UserId)
+                && parentComment.AuthorId != commentOwnerUserId)
             {
                 var commenter = await db.Users
                     .AsNoTracking()
@@ -382,6 +389,7 @@ public class SocialService(
 
         var post = await db.Posts
             .Include(p => p.Employer)
+            .Include(p => p.Cafe)
             .FirstOrDefaultAsync(p => p.Id == postId)
             ?? throw new KeyNotFoundException("Post bulunamadı.");
 
@@ -401,7 +409,9 @@ public class SocialService(
             await db.SaveChangesAsync();
 
             // Bildirim: post sahibine paylaşım bildirimi gönder (kendi postunu paylaşırsa gönderme)
-            if (post.Employer.UserId != userId)
+            var shareOwnerUserId = post.AuthorType == PostAuthorType.Cafe ? post.Cafe?.UserId : post.Employer?.UserId;
+
+            if (shareOwnerUserId != null && shareOwnerUserId != userId)
             {
                 var sharer = await db.Users
                     .AsNoTracking()
@@ -410,7 +420,7 @@ public class SocialService(
                     .FirstOrDefaultAsync();
 
                 await notifications.NotifyAsync(
-                    userId:    post.Employer.UserId,
+                    userId:    shareOwnerUserId.Value,
                     type:      NotificationType.PostShared,
                     title:     "Gönderiniz paylaşıldı",
                     body:      $"{sharer?.FirstName} {sharer?.LastName} gönderinizi paylaştı.",
