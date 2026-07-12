@@ -9,6 +9,7 @@ public class SpaceListingResponse
     public int Capacity { get; set; }
     public decimal HourlyPrice { get; set; }
     public List<string> Amenities { get; set; } = [];
+    public List<string> PhotoUrls { get; set; } = [];
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

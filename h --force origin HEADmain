@@ -1,0 +1,41 @@
+* [33me0f97ef[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m update_auth
+* [33m81a5028[m feat(posts): allow Cafe accounts to author EmployersOnly posts alongside Employer posts
+* [33m0ce91b6[m Controller_update
+* [33m37e8c7b[m event_reminder_token
+*   [33m9ab6ba2[m Merge branch 'main' of https://github.com/CihatEmreCinar/atolium-backend
+[32m|[m[33m\[m  
+[32m|[m * [33me6c4754[m Update appsettings.json
+[32m|[m * [33m71603f4[m Update appsettings.json
+* [33m|[m [33m1a973b0[m notification_booking
+[33m|[m[33m/[m  
+* [33m7a063db[m feat(cafe): add dashboard stats endpoint
+* [33m6b1f800[m last_commit_AddCafeProfileCategories
+* [33mc463038[m fix: post oluşturma employer profil lookup
+* [33md2ea070[m feat: Cafe rolü ve domain modeli
+* [33mf6e5d1d[m image_bug_fix
+* [33m8405810[m employee_employer_endpoint_update
+* [33mf6c3b5c[m bekleyen_kayit_ekranlari_olusturuldu
+* [33m2e5708e[m bugfix
+* [33m75320f3[m SocialFeed_Notification_API_Tests_OK
+* [33m134ed86[m RabbitMQ_Notification
+* [33m281b31a[m first commit
+* [33m1dffa8e[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat(posts): allow Cafe accounts to author EmployersOnly posts alongside Employer posts
+* [33mcc25950[m Controller_update
+* [33m795407c[m event_reminder_token
+*   [33m8e5aca2[m Merge branch 'main' of https://github.com/CihatEmreCinar/atolium-backend
+[35m|[m[36m\[m  
+[35m|[m * [33mbdbf974[m Update appsettings.json
+[35m|[m * [33m5e81e32[m Update appsettings.json
+* [36m|[m [33me3ac3d5[m notification_booking
+[36m|[m[36m/[m  
+* [33m478a6f1[m feat(cafe): add dashboard stats endpoint
+* [33m78e08a7[m last_commit_AddCafeProfileCategories
+* [33m00c1aa0[m fix: post oluşturma employer profil lookup
+* [33m2c28b1c[m feat: Cafe rolü ve domain modeli
+* [33m718d218[m image_bug_fix
+* [33mb425649[m employee_employer_endpoint_update
+* [33m3018763[m bekleyen_kayit_ekranlari_olusturuldu
+* [33m164898a[m bugfix
+* [33m933132d[m SocialFeed_Notification_API_Tests_OK
+* [33m6ce421d[m RabbitMQ_Notification
+* [33md1cf3f1[m first commit

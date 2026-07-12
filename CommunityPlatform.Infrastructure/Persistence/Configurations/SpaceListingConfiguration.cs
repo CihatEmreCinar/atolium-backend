@@ -22,3 +22,23 @@ public class SpaceListingConfiguration : IEntityTypeConfiguration<SpaceListing>
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
+
+public class SpaceListingPhotoConfiguration : IEntityTypeConfiguration<SpaceListingPhoto>
+{
+    public void Configure(EntityTypeBuilder<SpaceListingPhoto> builder)
+    {
+        builder.ToTable("space_listing_photos");
+        builder.HasKey(p => p.Id);
+
+        builder.Property(p => p.StorageKey).HasMaxLength(512);
+        builder.Property(p => p.Url).HasMaxLength(512);
+
+        builder.HasOne(p => p.SpaceListing)
+            .WithMany(l => l.Photos)
+            .HasForeignKey(p => p.SpaceListingId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasIndex(p => new { p.SpaceListingId, p.OrderIndex })
+            .HasDatabaseName("ix_space_listing_photos_listing_order");
+    }
+}

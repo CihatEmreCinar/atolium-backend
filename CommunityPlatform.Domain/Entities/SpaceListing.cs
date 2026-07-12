@@ -18,4 +18,5 @@ public class SpaceListing
     public CafeProfile CafeProfile { get; set; } = null!;
     public ICollection<SpaceAvailability> SpaceAvailabilities { get; set; } = [];
     public ICollection<SpaceBooking> SpaceBookings { get; set; } = [];
+    public ICollection<SpaceListingPhoto> Photos { get; set; } = [];
 }

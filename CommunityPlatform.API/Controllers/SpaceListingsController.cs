@@ -53,6 +53,7 @@ public class SpaceListingsController(
 
         var created = await db.SpaceListings
             .Include(l => l.CafeProfile)
+            .Include(l => l.Photos)
             .FirstAsync(l => l.Id == listing.Id);
 
         return CreatedAtAction(nameof(GetById), new { id = listing.Id }, MapToResponse(created));
@@ -67,6 +68,7 @@ public class SpaceListingsController(
 
         var listing = await db.SpaceListings
             .Include(l => l.CafeProfile)
+            .Include(l => l.Photos)
             .FirstOrDefaultAsync(l => l.Id == id);
 
         if (listing == null)
@@ -136,6 +138,7 @@ public class SpaceListingsController(
 
         var listings = await db.SpaceListings
             .Include(l => l.CafeProfile)
+            .Include(l => l.Photos)
             .Where(l => l.CafeProfileId == cafeProfile.Id)
             .OrderByDescending(l => l.CreatedAt)
             .ToListAsync();
@@ -149,6 +152,7 @@ public class SpaceListingsController(
     {
         var listing = await db.SpaceListings
             .Include(l => l.CafeProfile)
+            .Include(l => l.Photos)
             .FirstOrDefaultAsync(l => l.Id == id);
 
         if (listing == null || !listing.IsActive)
@@ -188,6 +192,25 @@ public class SpaceListingsController(
         await using var stream = file.OpenReadStream();
         var saved = await storage.SaveAsync(key, stream, file.ContentType);
 
+        // FIX: Önceden burada sadece storage'a kaydedip URL dönülüyordu — SpaceListing'e
+        // hiç bağlanmadığı için upload "başarılı" dönmesine rağmen fotoğraf hiçbir
+        // response'ta (GetMine/GetById/Search) görünmüyordu. Şimdi kalıcı satır olarak ekleniyor.
+        var nextOrderIndex = (short)(await db.SpaceListingPhotos
+            .Where(p => p.SpaceListingId == listing.Id)
+            .CountAsync());
+
+        var photo = new SpaceListingPhoto
+        {
+            SpaceListingId = listing.Id,
+            StorageKey = saved.Key,
+            Url = saved.Url,
+            OrderIndex = nextOrderIndex,
+            SizeBytes = saved.SizeBytes
+        };
+
+        db.SpaceListingPhotos.Add(photo);
+        await db.SaveChangesAsync();
+
         return Ok(new FileUploadResponse { Url = saved.Url, SizeBytes = saved.SizeBytes });
     }
 
@@ -207,6 +230,7 @@ public class SpaceListingsController(
 
         var query = db.SpaceListings
             .Include(l => l.CafeProfile)
+            .Include(l => l.Photos)
             .Where(l => l.IsActive)
             .AsQueryable();
 
@@ -251,6 +275,10 @@ public class SpaceListingsController(
         Capacity = listing.Capacity,
         HourlyPrice = listing.HourlyPrice,
         Amenities = listing.Amenities ?? [],
+        PhotoUrls = listing.Photos
+            .OrderBy(p => p.OrderIndex)
+            .Select(p => p.Url)
+            .ToList(),
         IsActive = listing.IsActive,
         CreatedAt = listing.CreatedAt,
         UpdatedAt = listing.UpdatedAt,

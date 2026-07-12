@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<EmployeeProfile> EmployeeProfiles => Set<EmployeeProfile>();
     public DbSet<CafeProfile> CafeProfiles => Set<CafeProfile>();
     public DbSet<SpaceListing> SpaceListings => Set<SpaceListing>();
+    public DbSet<SpaceListingPhoto> SpaceListingPhotos => Set<SpaceListingPhoto>();
     public DbSet<SpaceAvailability> SpaceAvailabilities => Set<SpaceAvailability>();
     public DbSet<SpaceBooking> SpaceBookings => Set<SpaceBooking>();
     public DbSet<Category> Categories => Set<Category>();
