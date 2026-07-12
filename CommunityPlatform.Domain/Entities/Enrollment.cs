@@ -9,7 +9,7 @@ public class Enrollment
     public string Status { get; set; } = "pending"; // pending | confirmed | cancelled | attended
     public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
     public DateTime? AttendedAt { get; set; }
-    public string TicketCode { get; set; } = string.Empty;
+    public string? TicketCode { get; set; } 
 
     // Navigation
     public Workshop Workshop { get; set; } = null!;

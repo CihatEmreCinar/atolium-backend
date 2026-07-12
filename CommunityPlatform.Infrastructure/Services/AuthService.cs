@@ -46,6 +46,9 @@ public class AuthService(AppDbContext db, JwtService jwtService)
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return null;
 
+        if (!user.IsActive)
+            return null;
+
         user.LastLoginAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
 

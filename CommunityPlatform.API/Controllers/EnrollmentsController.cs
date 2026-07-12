@@ -50,7 +50,7 @@ public class EnrollmentsController(
             existingEnrollment.Status = "pending";
             existingEnrollment.EnrolledAt = DateTime.UtcNow;
             existingEnrollment.AttendedAt = null;
-            existingEnrollment.TicketCode = string.Empty;
+            existingEnrollment.TicketCode = null;
             enrollment = existingEnrollment;
         }
         else

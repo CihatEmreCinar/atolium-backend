@@ -38,6 +38,17 @@ public class AdminController(AppDbContext db) : ControllerBase
         return Ok(users);
     }
 
+    [HttpPost("users/{id}/promote-to-admin")]
+    public async Task<IActionResult> PromoteToAdmin(Guid id)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null) return NotFound();
+
+        user.Role = "admin";
+        await db.SaveChangesAsync();
+        return Ok(new { id = user.Id, role = user.Role });
+    }
+
     [HttpPatch("users/{id}/status")]
     public async Task<IActionResult> UpdateUserStatus(Guid id, [FromBody] UpdateUserStatusRequest request)
     {

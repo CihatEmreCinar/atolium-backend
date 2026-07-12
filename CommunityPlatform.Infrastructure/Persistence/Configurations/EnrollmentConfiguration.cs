@@ -10,7 +10,7 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
     {
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("pending");
-        builder.Property(e => e.TicketCode).HasMaxLength(64).IsRequired();
+        builder.Property(e => e.TicketCode).HasMaxLength(64).IsRequired(false);
         builder.HasIndex(e => e.TicketCode).IsUnique();
         builder.HasIndex(e => new { e.WorkshopId, e.UserId }).IsUnique();
 

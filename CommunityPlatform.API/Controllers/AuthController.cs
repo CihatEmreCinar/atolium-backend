@@ -1,11 +1,14 @@
 using CommunityPlatform.Application.DTOs.Auth;
 using CommunityPlatform.Infrastructure.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 namespace CommunityPlatform.API.Controllers;
 
 [ApiController]
 [Route("api/v1/auth")]
+[EnableRateLimiting("auth")]
 public class AuthController(AuthService authService) : ControllerBase
 {
    [HttpPost("register")]

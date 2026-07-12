@@ -119,14 +119,44 @@ public class NotificationService(
     };
 
     private static string BuildEmailBody(string title, string body) => $"""
-        <!DOCTYPE html>
-        <html>
-        <body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-          <h2 style="color:#1a1a1a">{title}</h2>
-          <p style="color:#444;line-height:1.6">{body}</p>
-          <hr style="border:none;border-top:1px solid #eee;margin:24px 0"/>
-          <p style="color:#999;font-size:12px">Atolium · Bu e-posta otomatik olarak gönderilmiştir.</p>
-        </body>
-        </html>
-        """;
+    <!DOCTYPE html>
+    <html lang="tr">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{title}</title>
+    </head>
+    <body style="margin:0;padding:0;background-color:#f4f6f5;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f5;padding:32px 16px;">
+        <tr>
+          <td align="center">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+              <tr>
+                <td style="padding:32px 32px 20px 32px;text-align:center;border-bottom:4px solid #068D84;">
+                  <img src="cid:logo" width="64" height="64" alt="Atolium" style="display:block;margin:0 auto 10px auto;border-radius:16px;">
+                  <span style="color:#068D84;font-size:17px;font-weight:700;letter-spacing:0.3px;">ATOLIUM</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:36px 32px 8px 32px;">
+                  <h1 style="margin:0 0 16px 0;color:#111827;font-size:20px;font-weight:700;">{title}</h1>
+                  <p style="margin:0;color:#4b5563;font-size:15px;line-height:1.65;">{body}</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:28px 32px 32px 32px;">
+                  <hr style="border:none;border-top:1px solid #eef0ef;margin:0 0 20px 0;">
+                  <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.5;">
+                    Bu e-posta Atolium tarafından otomatik olarak gönderilmiştir.<br>
+                    Sorularınız için bize ulaşabilirsiniz.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    """;
 }
