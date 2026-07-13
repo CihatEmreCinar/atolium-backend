@@ -1,19 +1,5 @@
-# .NET build outputs
 bin/
 obj/
 *.user
-*.suo
-.vs/
-
-# Kullanıcı tarafından yüklenen medya dosyaları — repoya commit edilmemeli
-CommunityPlatform.API/wwwroot/uploads/
-
-# Environment / secrets
 appsettings.Development.json
-*.env
-.env*
-
-# OS
-.DS_Store
-Thumbs.db
 .env
