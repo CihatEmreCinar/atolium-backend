@@ -6,6 +6,7 @@ public class EmployeeProfile
     public Guid UserId { get; set; }
     public List<string> Interests { get; set; } = [];
     public List<string> Hobbies { get; set; } = [];
+    public string? CoverImageUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation
