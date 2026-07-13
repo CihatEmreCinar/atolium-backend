@@ -21,6 +21,7 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
             .Include(w => w.Employer)
             .Include(w => w.WorkshopCategories)
                 .ThenInclude(wc => wc.Category)
+            .Where(w => w.DeletedAt == null)
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
@@ -48,7 +49,7 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
             .Include(w => w.Employer)
             .Include(w => w.WorkshopCategories)
                 .ThenInclude(wc => wc.Category)
-            .Where(w => w.EmployerId == currentUser.UserId)
+            .Where(w => w.EmployerId == currentUser.UserId && w.DeletedAt == null)
             .OrderByDescending(w => w.CreatedAt)
             .ToListAsync();
 
@@ -69,7 +70,7 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
             .Include(w => w.Employer)
             .Include(w => w.WorkshopCategories)
                 .ThenInclude(wc => wc.Category)
-            .Where(w => w.Status == "published")
+            .Where(w => w.Status == "published" && w.DeletedAt == null)
             .ToListAsync();
 
         var ranked = workshops
@@ -82,7 +83,91 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
         return Ok(ranked);
     }
 
-    [HttpGet("{id}")]
+    // SpaceListingsController.Search ile aynı sayfalama/response şekli — frontend tarafında
+    // aynı desenle tüketilebilsin diye kasıtlı olarak birebir taklit edildi.
+    [HttpGet("search")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Search(
+        [FromQuery] string? q,
+        [FromQuery] string? city,
+        [FromQuery] Guid? categoryId,
+        [FromQuery] string? locationType,
+        [FromQuery] decimal? minPrice,
+        [FromQuery] decimal? maxPrice,
+        [FromQuery] int? minCapacity,
+        [FromQuery] int? maxCapacity,
+        [FromQuery] DateTime? startAfter,
+        [FromQuery] DateTime? startBefore,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
+        var query = db.Workshops
+            .Include(w => w.Employer)
+            .Include(w => w.WorkshopCategories)
+                .ThenInclude(wc => wc.Category)
+            .Where(w => w.Status == "published" && w.DeletedAt == null)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var term = q.Trim().ToLower();
+            query = query.Where(w => w.Title.ToLower().Contains(term)
+                || (w.Description != null && w.Description.ToLower().Contains(term)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(city))
+            query = query.Where(w => w.Employer.City != null && w.Employer.City.ToLower().Contains(city.Trim().ToLower()));
+
+        if (categoryId.HasValue)
+            query = query.Where(w => w.WorkshopCategories.Any(wc => wc.CategoryId == categoryId.Value));
+
+        if (!string.IsNullOrWhiteSpace(locationType))
+        {
+            var normalizedLocationType = locationType.Trim().ToLower();
+            query = query.Where(w => w.LocationType == normalizedLocationType);
+        }
+
+        if (minPrice.HasValue)
+            query = query.Where(w => w.Price >= minPrice.Value);
+
+        if (maxPrice.HasValue)
+            query = query.Where(w => w.Price <= maxPrice.Value);
+
+        if (minCapacity.HasValue)
+            query = query.Where(w => w.Capacity >= minCapacity.Value);
+
+        if (maxCapacity.HasValue)
+            query = query.Where(w => w.Capacity <= maxCapacity.Value);
+
+        if (startAfter.HasValue)
+            query = query.Where(w => w.StartAt >= startAfter.Value);
+
+        if (startBefore.HasValue)
+            query = query.Where(w => w.StartAt <= startBefore.Value);
+
+        var total = await query.CountAsync();
+        // CreatedAt yerine StartAt'a göre sıralanıyor (SpaceListing'den kasıtlı fark):
+        // atölye zamana bağlı bir etkinlik, kullanıcı en yakın başlayanı görmeli.
+        var items = await query
+            .OrderBy(w => w.StartAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return Ok(new
+        {
+            page,
+            pageSize,
+            total,
+            totalPages = (int)Math.Ceiling(total / (double)pageSize),
+            items = items.Select(MapToResponse)
+        });
+    }
+
+    [HttpGet("{id:guid}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -90,7 +175,7 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
             .Include(w => w.Employer)
             .Include(w => w.WorkshopCategories)
                 .ThenInclude(wc => wc.Category)
-            .FirstOrDefaultAsync(w => w.Id == id);
+            .FirstOrDefaultAsync(w => w.Id == id && w.DeletedAt == null);
 
         if (workshop == null)
             return NotFound();
@@ -147,7 +232,7 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
         return CreatedAtAction(nameof(GetById), new { id = workshop.Id }, MapToResponse(created));
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:guid}")]
     [Authorize(Roles = "employer")]
     public async Task<IActionResult> Update(Guid id, [FromBody] WorkshopRequest request)
     {
@@ -194,7 +279,7 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
         return Ok(MapToResponse(updated));
     }
 
-    [HttpPatch("{id}/status")]
+    [HttpPatch("{id:guid}/status")]
     [Authorize(Roles = "employer")]
     public async Task<IActionResult> ChangeStatus(Guid id, [FromBody] ChangeStatusRequest request)
     {
@@ -228,7 +313,7 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
         return Ok(new { id = workshop.Id, status = workshop.Status });
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:guid}")]
     [Authorize(Roles = "employer")]
     public async Task<IActionResult> Delete(Guid id)
     {
@@ -245,7 +330,7 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
         return NoContent();
     }
 
-    [HttpGet("{id}/enrollments")]
+    [HttpGet("{id:guid}/enrollments")]
     [Authorize(Roles = "employer")]
     public async Task<IActionResult> GetEnrollments(Guid id)
     {
