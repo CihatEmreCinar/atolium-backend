@@ -206,7 +206,12 @@ public class FeedService(
         {
             Id = p.Id,
 
-            EmployerId = p.AuthorType == PostAuthorType.Employer ? p.EmployerId : null,
+            // FIX: Post.EmployerId FK olarak EmployerProfile.Id'yi tutuyor (bkz.
+            // PostConfiguration.HasForeignKey(p => p.EmployerId), principal key EmployerProfile.Id).
+            // Ama Workshop.EmployerId ve /employers/{id}/profile endpoint'i User.Id bekliyor.
+            // Burada ham p.EmployerId (=EmployerProfile.Id) döndürülürse frontend'in
+            // navigasyonu her zaman 404'e düşer. ownerUserId zaten doğru User.Id — onu kullan.
+            EmployerId = p.AuthorType == PostAuthorType.Employer ? ownerUserId : null,
             EmployerName = p.AuthorType == PostAuthorType.Employer && p.Employer != null
                 ? p.Employer.User.FirstName + " " + p.Employer.User.LastName
                 : null,

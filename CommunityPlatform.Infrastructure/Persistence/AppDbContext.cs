@@ -19,6 +19,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<WorkshopCategory> WorkshopCategories => Set<WorkshopCategory>();
     public DbSet<EmployerProfileCategory> EmployerProfileCategories => Set<EmployerProfileCategory>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
+    public DbSet<WorkshopTicket> WorkshopTickets => Set<WorkshopTicket>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<Notification> Notifications => Set<Notification>();

@@ -39,6 +39,7 @@ builder.Services.AddSingleton<IRabbitMqPublisher, RabbitMqPublisher>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IStorageProvider, LocalStorageProvider>();
+builder.Services.AddScoped<ITicketSigningService, TicketSigningService>();
 builder.Services.AddHttpClient(); // ReminderDispatchJob → Expo Push API
 // ─── Sosyal Feed Servisleri ───────────────────────────────────────────────────
 builder.Services.AddScoped<PostService>();
@@ -83,6 +84,24 @@ builder.Services.AddRateLimiter(options =>
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         opt.QueueLimit = 0;
+    });
+
+    // QR verify/check-in — brute-force ticketId taramasına karşı. IP yerine authenticated
+    // employer'ın UserId'sine göre partition'lanır (bu endpoint zaten [Authorize] arkasında,
+    // IP partition'ı NAT arkasındaki birden fazla employer'ı yanlışlıkla birbirine karıştırır).
+    options.AddPolicy("ticket-verify", httpContext =>
+    {
+        var employerId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "anon";
+
+        return RateLimitPartition.GetFixedWindowLimiter(employerId, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(1),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 0
+        });
     });
 });
 

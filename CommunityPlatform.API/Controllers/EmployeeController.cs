@@ -1,5 +1,6 @@
 using CommunityPlatform.Application.DTOs.Employee;
 using CommunityPlatform.Application.Interfaces;
+using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,7 +26,7 @@ public class EmployeeController(AppDbContext db, ICurrentUserService currentUser
         var user = await db.Users.FirstAsync(u => u.Id == currentUser.UserId);
 
         var attendedCount = await db.Enrollments
-            .CountAsync(e => e.UserId == currentUser.UserId && e.Status == "attended");
+            .CountAsync(e => e.UserId == currentUser.UserId && e.AttendanceStatus == AttendanceStatus.Attended);
 
         return Ok(new EmployeeProfileResponse
         {
@@ -63,7 +64,7 @@ public class EmployeeController(AppDbContext db, ICurrentUserService currentUser
         await db.SaveChangesAsync();
 
         var attendedCount = await db.Enrollments
-            .CountAsync(e => e.UserId == currentUser.UserId && e.Status == "attended");
+            .CountAsync(e => e.UserId == currentUser.UserId && e.AttendanceStatus == AttendanceStatus.Attended);
 
         return Ok(new EmployeeProfileResponse
         {

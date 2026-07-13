@@ -57,6 +57,19 @@ public class AdminController(AppDbContext db) : ControllerBase
             return NotFound();
 
         user.IsActive = request.IsActive;
+
+        // Banlanan kullanıcının elindeki tüm refresh token'ları iptal et.
+        // Aksi halde login engellense de refresh ile oturumunu süresiz yenileyebilir.
+        if (!request.IsActive)
+        {
+            var activeTokens = await db.RefreshTokens
+                .Where(rt => rt.UserId == id && !rt.IsRevoked)
+                .ToListAsync();
+
+            foreach (var token in activeTokens)
+                token.IsRevoked = true;
+        }
+
         await db.SaveChangesAsync();
 
         return Ok(new { id = user.Id, isActive = user.IsActive });

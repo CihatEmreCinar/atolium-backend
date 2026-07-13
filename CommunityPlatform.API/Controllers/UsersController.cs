@@ -1,6 +1,7 @@
 using CommunityPlatform.Application.DTOs.Media;
 using CommunityPlatform.Application.DTOs.Users;
 using CommunityPlatform.Application.Interfaces;
+using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -74,7 +75,7 @@ public class UsersController(
 
         var attendedCount = user.EmployeeProfile == null
             ? 0
-            : await db.Enrollments.CountAsync(e => e.UserId == user.Id && e.Status == "attended");
+            : await db.Enrollments.CountAsync(e => e.UserId == user.Id && e.AttendanceStatus == AttendanceStatus.Attended);
 
         return Ok(new MyProfileResponse
         {

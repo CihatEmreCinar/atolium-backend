@@ -64,6 +64,11 @@ public class AuthService(AppDbContext db, JwtService jwtService)
         if (stored == null || stored.IsRevoked || stored.ExpiresAt < DateTime.UtcNow)
             return null;
 
+        // Banlanmış (IsActive = false) kullanıcı, elindeki eski refresh token ile
+        // süresiz oturum yenileyemesin. Login zaten bunu engelliyordu, refresh etmiyordu.
+        if (!stored.User.IsActive)
+            return null;
+
         // Eski token'ı iptal et (rotation)
         stored.IsRevoked = true;
 
@@ -81,6 +86,9 @@ public class AuthService(AppDbContext db, JwtService jwtService)
         return true;
     }
 
+    // GÜVENLİK: "admin" burada KASITLI olarak kabul edilmiyor. Genel /auth/register
+    // ucu üzerinden kimse admin rolüyle kayıt olamaz — admin ataması yalnızca
+    // AdminController.PromoteToAdmin üzerinden, zaten admin olan biri tarafından yapılabilir.
     private static string NormalizeRole(string? role)
     {
         if (string.IsNullOrWhiteSpace(role))
@@ -92,9 +100,9 @@ public class AuthService(AppDbContext db, JwtService jwtService)
         {
             "employer" => "employer",
             "employee" => "employee",
-            "admin" => "admin",
             "cafe" => "cafe",
-            _ => throw new ArgumentException($"Geçersiz rol: '{role}'. Beklenen: employer, employee, admin, cafe.")
+            "admin" => throw new ArgumentException("Bu rolle kayıt oluşturulamaz."),
+            _ => throw new ArgumentException($"Geçersiz rol: '{role}'. Beklenen: employer, employee, cafe.")
         };
     }
 

@@ -354,6 +354,13 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AttendanceStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Pending");
+
                     b.Property<DateTime?>("AttendedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -370,10 +377,6 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(20)")
                         .HasDefaultValue("pending");
 
-                    b.Property<string>("TicketCode")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
@@ -383,9 +386,6 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("PaymentId");
-
-                    b.HasIndex("TicketCode")
-                        .IsUnique();
 
                     b.HasIndex("UserId");
 
@@ -990,6 +990,42 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.ToTable("SpaceListings");
                 });
 
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.SpaceListingPhoto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<short>("OrderIndex")
+                        .HasColumnType("smallint");
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("SpaceListingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SpaceListingId", "OrderIndex")
+                        .HasDatabaseName("ix_space_listing_photos_listing_order");
+
+                    b.ToTable("space_listing_photos", (string)null);
+                });
+
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.Tag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1270,6 +1306,45 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.HasIndex("CategoryId");
 
                     b.ToTable("WorkshopCategories");
+                });
+
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.WorkshopTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EnrollmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Nonce")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("Revoked")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Signature")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("UsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnrollmentId")
+                        .HasDatabaseName("ix_workshop_tickets_enrollment_id");
+
+                    b.ToTable("workshop_tickets", (string)null);
                 });
 
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.CafeProfile", b =>
@@ -1624,6 +1699,17 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Navigation("CafeProfile");
                 });
 
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.SpaceListingPhoto", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.SpaceListing", "SpaceListing")
+                        .WithMany("Photos")
+                        .HasForeignKey("SpaceListingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SpaceListing");
+                });
+
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.UserBadge", b =>
                 {
                     b.HasOne("CommunityPlatform.Domain.Entities.Badge", "Badge")
@@ -1715,6 +1801,17 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Navigation("Workshop");
                 });
 
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.WorkshopTicket", b =>
+                {
+                    b.HasOne("CommunityPlatform.Domain.Entities.Enrollment", "Enrollment")
+                        .WithMany("Tickets")
+                        .HasForeignKey("EnrollmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Enrollment");
+                });
+
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.Badge", b =>
                 {
                     b.Navigation("UserBadges");
@@ -1747,6 +1844,11 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                     b.Navigation("Workshops");
                 });
 
+            modelBuilder.Entity("CommunityPlatform.Domain.Entities.Enrollment", b =>
+                {
+                    b.Navigation("Tickets");
+                });
+
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.Post", b =>
                 {
                     b.Navigation("Comments");
@@ -1767,6 +1869,8 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CommunityPlatform.Domain.Entities.SpaceListing", b =>
                 {
+                    b.Navigation("Photos");
+
                     b.Navigation("SpaceAvailabilities");
 
                     b.Navigation("SpaceBookings");

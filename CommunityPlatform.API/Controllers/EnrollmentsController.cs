@@ -1,4 +1,5 @@
 using CommunityPlatform.Application.DTOs.Enrollments;
+using CommunityPlatform.Application.DTOs.Tickets;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
 using CommunityPlatform.Domain.Enums;
@@ -16,7 +17,8 @@ public class EnrollmentsController(
     AppDbContext db,
     ICurrentUserService currentUser,
     INotificationService notifications,
-    IReminderService reminderService) : ControllerBase
+    IReminderService reminderService,
+    ITicketSigningService signingService) : ControllerBase
 {
     // Employee atölyeye kayıt başvurusu yapar → "pending"
     [HttpPost]
@@ -48,9 +50,9 @@ public class EnrollmentsController(
         if (existingEnrollment != null)
         {
             existingEnrollment.Status = "pending";
+            existingEnrollment.AttendanceStatus = AttendanceStatus.Pending;
             existingEnrollment.EnrolledAt = DateTime.UtcNow;
             existingEnrollment.AttendedAt = null;
-            existingEnrollment.TicketCode = null;
             enrollment = existingEnrollment;
         }
         else
@@ -95,10 +97,9 @@ public class EnrollmentsController(
             .Include(e => e.Workshop)
             .Where(e => e.UserId == currentUser.UserId)
             .OrderByDescending(e => e.EnrolledAt)
-            .Select(e => MapToResponse(e, e.Workshop))
             .ToListAsync();
 
-        return Ok(enrollments);
+        return Ok(enrollments.Select(e => MapToResponse(e, e.Workshop)));
     }
 
     [HttpGet("{id}")]
@@ -115,6 +116,71 @@ public class EnrollmentsController(
             return Forbid();
 
         return Ok(MapToResponse(enrollment, enrollment.Workshop));
+    }
+
+    // Employee: kendi bileti — geçerli (kullanılmamış/iptal edilmemiş/süresi geçmemiş) bir
+    // bilet varsa onu döner, yoksa yeni imzalı bilet üretir. Sadece confirmed kayıtlar bilet alır.
+    [HttpGet("{id}/ticket")]
+    [Authorize(Roles = "employee")]
+    public async Task<IActionResult> GetTicket(Guid id)
+    {
+        var enrollment = await db.Enrollments
+            .Include(e => e.Workshop).ThenInclude(w => w.Employer)
+            .Include(e => e.User)
+            .Include(e => e.Tickets)
+            .FirstOrDefaultAsync(e => e.Id == id);
+
+        if (enrollment == null)
+            return NotFound();
+
+        if (enrollment.UserId != currentUser.UserId)
+            return Forbid();
+
+        if (enrollment.Status != "confirmed")
+            return BadRequest(new { message = "Yalnızca onaylanmış kayıtlar bilet alabilir." });
+
+        var ticket = enrollment.Tickets
+            .Where(t => !t.Revoked && t.UsedAt == null && t.ExpiresAt > DateTime.UtcNow)
+            .OrderByDescending(t => t.IssuedAt)
+            .FirstOrDefault();
+
+        if (ticket == null)
+        {
+            // Bilet workshop bitişinden 4 saat sonrasına kadar geçerli — geç check-in'e izin verir.
+            var expiresAt = enrollment.Workshop.EndAt.AddHours(4);
+            var ticketId = Guid.NewGuid();
+            var nonce = signingService.GenerateNonce();
+
+            ticket = new WorkshopTicket
+            {
+                Id = ticketId,
+                EnrollmentId = enrollment.Id,
+                ExpiresAt = expiresAt,
+                Nonce = nonce,
+                Signature = signingService.Sign(ticketId, nonce, expiresAt)
+            };
+
+            db.WorkshopTickets.Add(ticket);
+            await db.SaveChangesAsync();
+        }
+
+        return Ok(new TicketResponse
+        {
+            TicketId = ticket.Id,
+            EnrollmentId = enrollment.Id,
+            WorkshopId = enrollment.WorkshopId,
+            WorkshopTitle = enrollment.Workshop.Title,
+            WorkshopLocationType = enrollment.Workshop.LocationType,
+            WorkshopLocationDetail = enrollment.Workshop.LocationDetail,
+            WorkshopStartAt = enrollment.Workshop.StartAt,
+            WorkshopEndAt = enrollment.Workshop.EndAt,
+            EmployerName = $"{enrollment.Workshop.Employer.FirstName} {enrollment.Workshop.Employer.LastName}",
+            ParticipantName = $"{enrollment.User.FirstName} {enrollment.User.LastName}",
+            EnrollmentStatus = enrollment.Status,
+            AttendanceStatus = enrollment.AttendanceStatus.ToString(),
+            QrPayload = $"{ticket.Id:N}.{ticket.Signature}",
+            ExpiresAt = ticket.ExpiresAt
+        });
     }
 
     // Kayıt iptali (employee)
@@ -168,7 +234,6 @@ public class EnrollmentsController(
             return BadRequest(new { message = "Atölye kapasitesi dolu." });
 
         enrollment.Status = "confirmed";
-        enrollment.TicketCode = Guid.NewGuid().ToString("N");
         enrollment.Workshop.EnrolledCount += 1;
 
         await db.SaveChangesAsync();
@@ -183,11 +248,11 @@ public class EnrollmentsController(
             body:      $"\"{enrollment.Workshop.Title}\" atölyesine katılım talebiniz onaylandı.",
             metadata:  new { workshopId = enrollment.WorkshopId, route = "workshop/detail" },
             sendEmail: true);
+
         return Ok(new
         {
             id = enrollment.Id,
-            status = enrollment.Status,
-            ticketCode = enrollment.TicketCode
+            status = enrollment.Status
         });
     }
 
@@ -223,7 +288,9 @@ public class EnrollmentsController(
         return NoContent();
     }
 
-    // Employer katılımı teyit eder → employee'ye in-app + email bildirim
+    // Employer katılımı MANUEL teyit eder (QR scanner kullanmadan) → employee'ye in-app + email bildirim.
+    // Asıl / önerilen yol TicketsController.CheckIn (QR ile) — bu, tarayıcı olmadan da
+    // çalışabilmesi için korunan bir fallback.
     [HttpPatch("{id}/attend")]
     [Authorize(Roles = "employer")]
     public async Task<IActionResult> MarkAttended(Guid id)
@@ -241,7 +308,10 @@ public class EnrollmentsController(
         if (enrollment.Status != "confirmed")
             return BadRequest(new { message = "Sadece confirmed kayıtlar attended yapılabilir." });
 
-        enrollment.Status = "attended";
+        if (enrollment.AttendanceStatus == AttendanceStatus.Attended)
+            return Conflict(new { message = "Bu kayıt zaten attended olarak işaretlenmiş." });
+
+        enrollment.AttendanceStatus = AttendanceStatus.Attended;
         enrollment.AttendedAt = DateTime.UtcNow;
 
         var employee = await db.Users.FirstAsync(u => u.Id == enrollment.UserId);
@@ -260,7 +330,7 @@ public class EnrollmentsController(
         return Ok(new
         {
             id = enrollment.Id,
-            status = enrollment.Status,
+            attendanceStatus = enrollment.AttendanceStatus.ToString(),
             attendedAt = enrollment.AttendedAt
         });
     }
@@ -302,7 +372,7 @@ public class EnrollmentsController(
         WorkshopTitle = w.Title,
         WorkshopStartAt = w.StartAt,
         Status = e.Status,
-        TicketCode = e.TicketCode,
+        AttendanceStatus = e.AttendanceStatus.ToString(),
         EnrolledAt = e.EnrolledAt,
         AttendedAt = e.AttendedAt
     };

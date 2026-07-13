@@ -1,6 +1,7 @@
 using CommunityPlatform.Application.DTOs.Reviews;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
+using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -47,7 +48,7 @@ public class ReviewsController(AppDbContext db, ICurrentUserService currentUser)
         var enrollment = await db.Enrollments
             .FirstOrDefaultAsync(e => e.WorkshopId == workshopId && e.UserId == currentUser.UserId);
 
-        if (enrollment == null || enrollment.Status != "attended")
+        if (enrollment == null || enrollment.AttendanceStatus != AttendanceStatus.Attended)
             return BadRequest(new { message = "Sadece katıldığınız atölyelere yorum yapabilirsiniz." });
 
         var alreadyReviewed = await db.Reviews

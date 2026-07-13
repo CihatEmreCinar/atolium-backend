@@ -12,7 +12,7 @@ public class RegisterRequest
     public string FirstName { get; set; } = null!;
     [Required]
     public string LastName { get; set; } = null!;
-    public string Role { get; set; } = "employee"; // employer | employee | cafe | admin
+    public string Role { get; set; } = "employee"; // employer | employee | cafe — admin bu uçtan asla atanamaz
     public string? City { get; set; }
 }
 

@@ -256,6 +256,9 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
         if (workshop.EmployerId != currentUser.UserId)
             return Forbid();
 
+        // Katılımcı listesi — mobil 4 sekmeye (Bekliyor/Onaylandı/Katıldı/Gelmedi) bu iki
+        // alanın kombinasyonuyla ayırır: Bekliyor=status pending, Onaylandı=confirmed+Pending,
+        // Katıldı=Attended, Gelmedi=NoShow.
         var enrollments = await db.Enrollments
             .Include(e => e.User)
             .Where(e => e.WorkshopId == id)
@@ -265,37 +268,33 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
                 e.UserId,
                 UserName = $"{e.User.FirstName} {e.User.LastName}",
                 e.Status,
-                e.TicketCode,
+                e.AttendanceStatus,
                 e.EnrolledAt,
                 e.AttendedAt
             })
             .ToListAsync();
 
-        return Ok(enrollments);
+        // AttendanceStatus'u string'e çevirme adımı kasıtlı olarak ayrı ve in-memory —
+        // enum.ToString()'un SQL'e çevrilebilirliği EF Core/Npgsql sürümüne göre değişken,
+        // yukarıdaki sorguyu (raw enum ile) güvenli tarafta tutuyoruz.
+        var result = enrollments.Select(e => new
+        {
+            e.Id,
+            e.UserId,
+            e.UserName,
+            e.Status,
+            AttendanceStatus = e.AttendanceStatus.ToString(),
+            e.EnrolledAt,
+            e.AttendedAt
+        });
+
+        return Ok(result);
     }
 
-    [HttpPatch("{id}/enrollments/{eid}/attend")]
-    [Authorize(Roles = "employer")]
-    public async Task<IActionResult> ConfirmAttendance(Guid id, Guid eid)
-    {
-        var workshop = await db.Workshops.FirstOrDefaultAsync(w => w.Id == id);
-        if (workshop == null)
-            return NotFound();
-
-        if (workshop.EmployerId != currentUser.UserId)
-            return Forbid();
-
-        var enrollment = await db.Enrollments.FirstOrDefaultAsync(e => e.Id == eid && e.WorkshopId == id);
-        if (enrollment == null)
-            return NotFound(new { message = "Kayıt bulunamadı." });
-
-        enrollment.Status = "attended";
-        enrollment.AttendedAt = DateTime.UtcNow;
-
-        await db.SaveChangesAsync();
-
-        return Ok(new { id = enrollment.Id, status = enrollment.Status, attendedAt = enrollment.AttendedAt });
-    }
+    // NOT: Bu workshop-scoped "attend" aksiyonu kaldırıldı — EnrollmentsController'da
+    // aynı işi yapan iki tutarsız endpoint vardı (biri guard'sız, XP/bildirimsiz).
+    // Tek doğru yol artık: TicketsController.CheckIn (QR ile) ya da
+    // EnrollmentsController.MarkAttended (manuel fallback, PATCH /enrollments/{id}/attend).
 
     private static WorkshopResponse MapToResponse(Workshop w) => new()
     {
