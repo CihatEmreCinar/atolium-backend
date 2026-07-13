@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.AspNetCore.Diagnostics;
 using RabbitMQ.Client;
 using CommunityPlatform.API.Services;
 using CommunityPlatform.Application.Interfaces;
@@ -113,6 +114,45 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// ─── Global Exception Handling ───────────────────────────────────────────────
+app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
+{
+    var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+
+    context.Response.ContentType = "application/json";
+    context.Response.StatusCode = exception switch
+    {
+        UnauthorizedAccessException => StatusCodes.Status403Forbidden,
+        KeyNotFoundException => StatusCodes.Status404NotFound,
+        ArgumentException or InvalidOperationException => StatusCodes.Status400BadRequest,
+        _ => StatusCodes.Status500InternalServerError
+    };
+
+    var isServerError = context.Response.StatusCode == StatusCodes.Status500InternalServerError;
+    var message = isServerError ? "Beklenmeyen bir hata oluştu." : (exception?.Message ?? "Bir hata oluştu.");
+
+    if (isServerError)
+        app.Logger.LogError(exception, "Yakalanmamış hata: {Path}", context.Request.Path);
+
+    await context.Response.WriteAsJsonAsync(new { message });
+}));
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+app.UseHttpsRedirection();
+
+// ─── Güvenlik header'ları ─────────────────────────────────────────────────────
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    context.Response.Headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()";
+    await next();
+});
 
 // ─── Static Files (uploads) ──────────────────────────────────────────────────
 // LocalStorageProvider dosyaları {WebRootPath}/uploads/ altına yazar.
