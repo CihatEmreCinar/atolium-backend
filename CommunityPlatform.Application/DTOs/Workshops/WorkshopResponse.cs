@@ -13,6 +13,14 @@ public class WorkshopResponse
     public int EnrolledCount { get; set; }
     public string LocationType { get; set; } = null!;
     public string? LocationDetail { get; set; }
+    public string? VenueName { get; set; }
+    public string? Address { get; set; }
+    public string? City { get; set; }
+    public Guid? CityId { get; set; }
+    public string? District { get; set; }
+    public Guid? DistrictId { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public DateTime StartAt { get; set; }
     public DateTime EndAt { get; set; }
     public string Status { get; set; } = null!;
@@ -22,4 +30,7 @@ public class WorkshopResponse
     public decimal AvgRating { get; set; }
     public int ReviewCount { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    // Sadece GET /workshops/nearby ile latitude/longitude verildiğinde dolar.
+    public double? DistanceKm { get; set; }
 }

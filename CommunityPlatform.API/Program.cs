@@ -41,7 +41,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IStorageProvider, LocalStorageProvider>();
 builder.Services.AddScoped<ITicketSigningService, TicketSigningService>();
-builder.Services.AddHttpClient(); // ReminderDispatchJob → Expo Push API Kozmetik, kod etkilemiyor // PushNotificationSender → Expo Push API
+builder.Services.AddHttpClient(); // ReminderDispatchJob → Expo Push API
 // ─── Sosyal Feed Servisleri ───────────────────────────────────────────────────
 builder.Services.AddScoped<PostService>();
 builder.Services.AddScoped<SocialService>();
@@ -107,6 +107,13 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+// İl/ilçe seed'i — tablo boşsa bir kereliğine yüklenir, sonraki başlatmalarda no-op.
+using (var seedScope = app.Services.CreateScope())
+{
+    var db = seedScope.ServiceProvider.GetRequiredService<CommunityPlatform.Infrastructure.Persistence.AppDbContext>();
+    await CommunityPlatform.Infrastructure.Persistence.SeedData.LocationSeeder.SeedAsync(db);
+}
 
 if (app.Environment.IsDevelopment())
 {

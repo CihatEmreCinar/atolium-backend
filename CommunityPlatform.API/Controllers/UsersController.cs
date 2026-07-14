@@ -1,4 +1,3 @@
-using CommunityPlatform.Application.Common;
 using CommunityPlatform.Application.DTOs.Media;
 using CommunityPlatform.Application.DTOs.Users;
 using CommunityPlatform.Application.Interfaces;
@@ -38,8 +37,7 @@ public class UsersController(
 
         var oldKey = storage.TryGetKeyFromUrl(user.AvatarUrl);
 
-        if (!FileUploadValidator.TryGetSafeExtension(file.ContentType, allowVideo: false, out var extension))
-            return BadRequest(new { message = "Desteklenmeyen dosya tipi." });
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         var key = $"users/{user.Id}/avatar/{Guid.NewGuid()}{extension}";
 
         await using var stream = file.OpenReadStream();
@@ -65,6 +63,8 @@ public class UsersController(
             return Unauthorized();
 
         var user = await db.Users
+            .Include(u => u.City)
+            .Include(u => u.District)
             .Include(u => u.EmployeeProfile)
             .Include(u => u.EmployerProfile)
                 .ThenInclude(p => p!.EmployerProfileCategories)
@@ -86,7 +86,10 @@ public class UsersController(
             FirstName = user.FirstName,
             LastName = user.LastName,
             Role = user.Role,
-            City = user.City,
+            City = user.City?.Name,
+            CityId = user.CityId,
+            District = user.District?.Name,
+            DistrictId = user.DistrictId,
             Bio = user.Bio,
             AvatarUrl = user.AvatarUrl,
             XpPoints = user.XpPoints,

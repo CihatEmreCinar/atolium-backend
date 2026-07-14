@@ -12,6 +12,16 @@ public class Workshop
     public int EnrolledCount { get; set; } = 0;
     public string LocationType { get; set; } = null!; // online | in-person
     public string? LocationDetail { get; set; }
+
+    // Fiziksel etkinlik konumu — Employer'ın kendi City'sinden bağımsız, workshop nerede
+    // yapılıyorsa o. Sadece LocationType='in-person' iken anlamlı.
+    public string? VenueName { get; set; }
+    public string? Address { get; set; }
+    public Guid? CityId { get; set; }
+    public Guid? DistrictId { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+
     public DateTime StartAt { get; set; }
     public DateTime EndAt { get; set; }
     public string Status { get; set; } = "draft"; // draft | published | cancelled | completed
@@ -21,10 +31,11 @@ public class Workshop
     public bool IsFeatured { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DeletedAt { get; set; }
-    public uint Version { get; set; } // Postgres xmin sistem kologuna eşlenecek — concurrency token
 
     // Navigation
     public User Employer { get; set; } = null!;
+    public City? City { get; set; }
+    public District? District { get; set; }
     public ICollection<WorkshopCategory> WorkshopCategories { get; set; } = [];
     public ICollection<Enrollment> Enrollments { get; set; } = [];
     public ICollection<Review> Reviews { get; set; } = [];

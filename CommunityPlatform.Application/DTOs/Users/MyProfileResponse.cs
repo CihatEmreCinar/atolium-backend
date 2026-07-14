@@ -8,6 +8,9 @@ public class MyProfileResponse
     public string LastName { get; set; } = null!;
     public string Role { get; set; } = null!;
     public string? City { get; set; }
+    public Guid? CityId { get; set; }
+    public string? District { get; set; }
+    public Guid? DistrictId { get; set; }
     public string? Bio { get; set; }
     public string? AvatarUrl { get; set; }
     public int XpPoints { get; set; }

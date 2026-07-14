@@ -1,4 +1,3 @@
-using CommunityPlatform.Application.Common;
 using CommunityPlatform.Application.DTOs.Employer;
 using CommunityPlatform.Application.DTOs.Media;
 using CommunityPlatform.Application.Interfaces;
@@ -38,8 +37,7 @@ public class EmployerController(
 
         var oldKey = storage.TryGetKeyFromUrl(profile.CoverImageUrl);
 
-        if (!FileUploadValidator.TryGetSafeExtension(file.ContentType, allowVideo: false, out var extension))
-            return BadRequest(new { message = "Desteklenmeyen dosya tipi." });
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         var key = $"employers/{profile.UserId}/cover/{Guid.NewGuid()}{extension}";
 
         await using var stream = file.OpenReadStream();
@@ -65,7 +63,8 @@ public class EmployerController(
             return Unauthorized();
 
         var profile = await db.EmployerProfiles
-            .Include(p => p.User)
+            .Include(p => p.User).ThenInclude(u => u.City)
+            .Include(p => p.User).ThenInclude(u => u.District)
             .Include(p => p.EmployerProfileCategories)
                 .ThenInclude(ec => ec.Category)
             .FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
@@ -97,7 +96,8 @@ public class EmployerController(
         profile.User.Bio = request.Bio;
         if (request.ProfileImageUrl != null)
             profile.User.AvatarUrl = request.ProfileImageUrl;
-        profile.User.City = request.City;
+        profile.User.CityId = request.CityId;
+        profile.User.DistrictId = request.DistrictId;
 
         profile.EmployerProfileCategories.Clear();
         if (request.CategoryIds != null)
@@ -115,7 +115,8 @@ public class EmployerController(
         await db.SaveChangesAsync();
 
         var updated = await db.EmployerProfiles
-            .Include(p => p.User)
+            .Include(p => p.User).ThenInclude(u => u.City)
+            .Include(p => p.User).ThenInclude(u => u.District)
             .Include(p => p.EmployerProfileCategories)
                 .ThenInclude(ec => ec.Category)
             .FirstAsync(p => p.UserId == currentUser.UserId);
@@ -181,7 +182,10 @@ public class EmployerController(
         TotalWorkshops = p.TotalWorkshops,
         Bio = p.User.Bio,
         ProfileImageUrl = p.User.AvatarUrl,
-        City = p.User.City,
+        City = p.User.City?.Name,
+        CityId = p.User.CityId,
+        District = p.User.District?.Name,
+        DistrictId = p.User.DistrictId,
         EmployerRank = p.EmployerRank
     };
 
@@ -191,7 +195,8 @@ public class EmployerController(
     public async Task<IActionResult> GetPublicProfile(Guid id)
     {
         var profile = await db.EmployerProfiles
-            .Include(p => p.User)
+            .Include(p => p.User).ThenInclude(u => u.City)
+            .Include(p => p.User).ThenInclude(u => u.District)
             .Include(p => p.EmployerProfileCategories)
                 .ThenInclude(ec => ec.Category)
             .FirstOrDefaultAsync(p => p.UserId == id);
@@ -220,7 +225,10 @@ public class EmployerController(
             WorkshopTitle = profile.WorkshopTitle,
             Bio = profile.User.Bio,
             ProfileImageUrl = profile.User.AvatarUrl,
-            City = profile.User.City,
+            City = profile.User.City?.Name,
+            CityId = profile.User.CityId,
+            District = profile.User.District?.Name,
+            DistrictId = profile.User.DistrictId,
             Specialization = profile.Specialization,
             CategoryNames = profile.EmployerProfileCategories.Select(ec => ec.Category.Name).ToList(),
             YearsExperience = profile.YearsExperience,

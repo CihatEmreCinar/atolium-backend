@@ -1,4 +1,3 @@
-using CommunityPlatform.Application.Common;
 using CommunityPlatform.Application.DTOs.Media;
 using CommunityPlatform.Application.DTOs.SpaceListings;
 using CommunityPlatform.Application.Interfaces;
@@ -53,7 +52,7 @@ public class SpaceListingsController(
         await db.SaveChangesAsync();
 
         var created = await db.SpaceListings
-            .Include(l => l.CafeProfile)
+            .Include(l => l.CafeProfile).ThenInclude(c => c!.City)
             .Include(l => l.Photos)
             .FirstAsync(l => l.Id == listing.Id);
 
@@ -68,7 +67,7 @@ public class SpaceListingsController(
             return Unauthorized();
 
         var listing = await db.SpaceListings
-            .Include(l => l.CafeProfile)
+            .Include(l => l.CafeProfile).ThenInclude(c => c!.City)
             .Include(l => l.Photos)
             .FirstOrDefaultAsync(l => l.Id == id);
 
@@ -110,7 +109,7 @@ public class SpaceListingsController(
             return Unauthorized();
 
         var listing = await db.SpaceListings
-            .Include(l => l.CafeProfile)
+            .Include(l => l.CafeProfile).ThenInclude(c => c!.City)
             .FirstOrDefaultAsync(l => l.Id == id);
 
         if (listing == null)
@@ -138,7 +137,7 @@ public class SpaceListingsController(
             return NotFound(new { message = "Cafe profili bulunamadı." });
 
         var listings = await db.SpaceListings
-            .Include(l => l.CafeProfile)
+            .Include(l => l.CafeProfile).ThenInclude(c => c!.City)
             .Include(l => l.Photos)
             .Where(l => l.CafeProfileId == cafeProfile.Id)
             .OrderByDescending(l => l.CreatedAt)
@@ -152,7 +151,7 @@ public class SpaceListingsController(
     public async Task<IActionResult> GetById(Guid id)
     {
         var listing = await db.SpaceListings
-            .Include(l => l.CafeProfile)
+            .Include(l => l.CafeProfile).ThenInclude(c => c!.City)
             .Include(l => l.Photos)
             .FirstOrDefaultAsync(l => l.Id == id);
 
@@ -178,7 +177,7 @@ public class SpaceListingsController(
             return BadRequest(new { message = "Sadece JPEG, PNG veya WEBP yükleyebilirsiniz." });
 
         var listing = await db.SpaceListings
-            .Include(l => l.CafeProfile)
+            .Include(l => l.CafeProfile).ThenInclude(c => c!.City)
             .FirstOrDefaultAsync(l => l.Id == id);
 
         if (listing == null)
@@ -187,8 +186,7 @@ public class SpaceListingsController(
         if (listing.CafeProfile.UserId != currentUser.UserId.Value)
             return Forbid();
 
-        if (!FileUploadValidator.TryGetSafeExtension(file.ContentType, allowVideo: false, out var extension))
-            return BadRequest(new { message = "Desteklenmeyen dosya tipi." });
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         var key = $"spaces/{listing.Id}/{Guid.NewGuid()}{extension}";
 
         await using var stream = file.OpenReadStream();
@@ -231,13 +229,13 @@ public class SpaceListingsController(
         if (pageSize < 1 || pageSize > 100) pageSize = 20;
 
         var query = db.SpaceListings
-            .Include(l => l.CafeProfile)
+            .Include(l => l.CafeProfile).ThenInclude(c => c!.City)
             .Include(l => l.Photos)
             .Where(l => l.IsActive)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(city))
-            query = query.Where(l => l.CafeProfile.City != null && l.CafeProfile.City.ToLower().Contains(city.Trim().ToLower()));
+            query = query.Where(l => l.CafeProfile.City != null && l.CafeProfile.City.Name.ToLower().Contains(city.Trim().ToLower()));
 
         if (minCapacity.HasValue)
             query = query.Where(l => l.Capacity >= minCapacity.Value);
@@ -285,7 +283,7 @@ public class SpaceListingsController(
         CreatedAt = listing.CreatedAt,
         UpdatedAt = listing.UpdatedAt,
         CafeName = listing.CafeProfile?.Name,
-        CafeCity = listing.CafeProfile?.City,
+        CafeCity = listing.CafeProfile?.City?.Name,
         CafeAvatarUrl = listing.CafeProfile?.AvatarUrl
     };
 }

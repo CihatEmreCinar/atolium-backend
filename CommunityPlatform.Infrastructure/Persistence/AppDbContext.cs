@@ -16,6 +16,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<SpaceBooking> SpaceBookings => Set<SpaceBooking>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Workshop> Workshops => Set<Workshop>();
+    public DbSet<City> Cities => Set<City>();
+    public DbSet<District> Districts => Set<District>();
     public DbSet<WorkshopCategory> WorkshopCategories => Set<WorkshopCategory>();
     public DbSet<EmployerProfileCategory> EmployerProfileCategories => Set<EmployerProfileCategory>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();

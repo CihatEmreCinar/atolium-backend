@@ -9,6 +9,9 @@ public class EmployerPublicProfileResponse
     public string? Bio { get; set; }
     public string? ProfileImageUrl { get; set; }
     public string? City { get; set; }
+    public Guid? CityId { get; set; }
+    public string? District { get; set; }
+    public Guid? DistrictId { get; set; }
     public List<string> Specialization { get; set; } = [];
     public List<string> CategoryNames { get; set; } = [];
     public int? YearsExperience { get; set; }

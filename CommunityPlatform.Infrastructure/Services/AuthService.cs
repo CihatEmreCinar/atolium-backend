@@ -21,7 +21,8 @@ public class AuthService(AppDbContext db, JwtService jwtService)
             FirstName = request.FirstName,
             LastName = request.LastName,
             Role = normalizedRole,
-            City = request.City
+            CityId = request.CityId,
+            DistrictId = request.DistrictId
         };
 
         db.Users.Add(user);

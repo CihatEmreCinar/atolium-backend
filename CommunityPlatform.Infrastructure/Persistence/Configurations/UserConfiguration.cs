@@ -26,5 +26,17 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasOne(u => u.CafeProfile)
             .WithOne(c => c.User)
             .HasForeignKey<CafeProfile>(c => c.UserId);
+
+        builder.HasOne(u => u.City)
+            .WithMany()
+            .HasForeignKey(u => u.CityId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(u => u.District)
+            .WithMany()
+            .HasForeignKey(u => u.DistrictId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

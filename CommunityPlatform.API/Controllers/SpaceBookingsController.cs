@@ -74,7 +74,7 @@ public class SpaceBookingsController(
             sendEmail: true);
 
         var created = await db.SpaceBookings
-            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile)
+            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile).ThenInclude(c => c.City)
             .Include(b => b.EmployerProfile).ThenInclude(e => e.User)
             .FirstAsync(b => b.Id == booking.Id);
 
@@ -88,7 +88,7 @@ public class SpaceBookingsController(
             return Unauthorized();
 
         var booking = await db.SpaceBookings
-            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile)
+            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile).ThenInclude(c => c.City)
             .Include(b => b.EmployerProfile).ThenInclude(e => e.User)
             .FirstOrDefaultAsync(b => b.Id == id);
 
@@ -117,7 +117,7 @@ public class SpaceBookingsController(
             return NotFound(new { message = "Employer profili bulunamadı." });
 
         var bookings = await db.SpaceBookings
-            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile)
+            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile).ThenInclude(c => c.City)
             .Include(b => b.EmployerProfile).ThenInclude(e => e.User)
             .Where(b => b.EmployerProfileId == employerProfile.Id)
             .OrderByDescending(b => b.CreatedAt)
@@ -139,7 +139,7 @@ public class SpaceBookingsController(
             return NotFound(new { message = "Cafe profili bulunamadı." });
 
         var bookings = await db.SpaceBookings
-            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile)
+            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile).ThenInclude(c => c.City)
             .Include(b => b.EmployerProfile).ThenInclude(e => e.User)
             .Where(b => b.SpaceListing.CafeProfileId == cafeProfile.Id)
             .OrderByDescending(b => b.CreatedAt)
@@ -157,7 +157,7 @@ public class SpaceBookingsController(
             return Unauthorized();
 
         var booking = await db.SpaceBookings
-            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile)
+            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile).ThenInclude(c => c.City)
             .Include(b => b.EmployerProfile).ThenInclude(e => e.User)
             .FirstOrDefaultAsync(b => b.Id == id);
 
@@ -199,7 +199,7 @@ public class SpaceBookingsController(
             return Unauthorized();
 
         var booking = await db.SpaceBookings
-            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile)
+            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile).ThenInclude(c => c.City)
             .Include(b => b.EmployerProfile).ThenInclude(e => e.User)
             .FirstOrDefaultAsync(b => b.Id == id);
 
@@ -236,7 +236,7 @@ public class SpaceBookingsController(
             return Unauthorized();
 
         var booking = await db.SpaceBookings
-            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile)
+            .Include(b => b.SpaceListing).ThenInclude(l => l.CafeProfile).ThenInclude(c => c.City)
             .Include(b => b.EmployerProfile).ThenInclude(e => e.User)
             .FirstOrDefaultAsync(b => b.Id == id);
 
@@ -271,7 +271,7 @@ public class SpaceBookingsController(
         SpaceListingTitle = b.SpaceListing?.Title,
         CafeProfileId = b.SpaceListing?.CafeProfileId,
         CafeName = b.SpaceListing?.CafeProfile?.Name,
-        CafeCity = b.SpaceListing?.CafeProfile?.City,
+        CafeCity = b.SpaceListing?.CafeProfile?.City?.Name,
         EmployerWorkshopTitle = b.EmployerProfile?.WorkshopTitle,
         EmployerFullName = b.EmployerProfile?.User?.FullName
     };

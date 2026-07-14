@@ -17,20 +17,19 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
     [AllowAnonymous]
     public async Task<IActionResult> GetAll([FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
-        if (page < 1) page = 1;
-        if (limit < 1 || limit > 100) limit = 20;
+        if (page <1 ) page =1;
+        if (limit < 1 || limit > 100) limit=20;
 
         var query = db.Workshops
             .Include(w => w.Employer)
+            .Include(w => w.City)
+            .Include(w => w.District)
             .Include(w => w.WorkshopCategories)
                 .ThenInclude(wc => wc.Category)
             .Where(w => w.DeletedAt == null)
             .AsQueryable();
 
-        // Anonim liste endpoint'i — status parametresi ne olursa olsun yalnızca
-        // yayınlanmış workshoplar görünür. Taslak/iptal edilmiş workshopları
-        // görmek için WorkshopsController.GetMine (sahiplik kontrollü) kullanılmalı.
-        query = query.Where(w => w.Status == "published");
+            query = query.Where(w => w.Status == "published");
 
         var workshops = await query
             .OrderByDescending(w => w.CreatedAt)
@@ -50,6 +49,8 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
 
         var workshops = await db.Workshops
             .Include(w => w.Employer)
+            .Include(w => w.City)
+            .Include(w => w.District)
             .Include(w => w.WorkshopCategories)
                 .ThenInclude(wc => wc.Category)
             .Where(w => w.EmployerId == currentUser.UserId && w.DeletedAt == null)
@@ -71,6 +72,8 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
 
         var workshops = await db.Workshops
             .Include(w => w.Employer)
+            .Include(w => w.City)
+            .Include(w => w.District)
             .Include(w => w.WorkshopCategories)
                 .ThenInclude(wc => wc.Category)
             .Where(w => w.Status == "published" && w.DeletedAt == null)
@@ -109,6 +112,8 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
 
         var query = db.Workshops
             .Include(w => w.Employer)
+            .Include(w => w.City)
+            .Include(w => w.District)
             .Include(w => w.WorkshopCategories)
                 .ThenInclude(wc => wc.Category)
             .Where(w => w.Status == "published" && w.DeletedAt == null)
@@ -122,7 +127,7 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
         }
 
         if (!string.IsNullOrWhiteSpace(city))
-            query = query.Where(w => w.Employer.City != null && w.Employer.City.ToLower().Contains(city.Trim().ToLower()));
+            query = query.Where(w => w.City != null && w.City.Name.ToLower().Contains(city.Trim().ToLower()));
 
         if (categoryId.HasValue)
             query = query.Where(w => w.WorkshopCategories.Any(wc => wc.CategoryId == categoryId.Value));
@@ -170,12 +175,118 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
         });
     }
 
+    // Kullanıcının GPS konumuna göre en yakın atölyeler. Koordinat verilmezse fallback
+    // zinciri çalışır: PreferredDistrict → aynı şehir → popüler → son eklenenler.
+    [HttpGet("nearby")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetNearby(
+        [FromQuery] double? latitude,
+        [FromQuery] double? longitude,
+        [FromQuery] double radius = 20,
+        [FromQuery] int limit = 30)
+    {
+        if (limit < 1 || limit > 100) limit = 30;
+        if (radius <= 0 || radius > 500) radius = 20;
+
+        var baseQuery = db.Workshops
+            .Include(w => w.Employer)
+            .Include(w => w.City)
+            .Include(w => w.District)
+            .Include(w => w.WorkshopCategories)
+                .ThenInclude(wc => wc.Category)
+            .Where(w => w.Status == "published");
+
+        if (latitude.HasValue && longitude.HasValue)
+        {
+            // Gerçek GPS mesafesi: koordinatı olan tüm in-person workshopları çekip
+            // Haversine ile hesaplıyoruz (Postgres tarafında PostGIS yok, in-memory hesap).
+            var candidates = await baseQuery
+                .Where(w => w.Latitude != null && w.Longitude != null)
+                .ToListAsync();
+
+            var withDistance = candidates
+                .Select(w => new
+                {
+                    Workshop = w,
+                    DistanceKm = HaversineKm(latitude.Value, longitude.Value, w.Latitude!.Value, w.Longitude!.Value)
+                })
+                .Where(x => x.DistanceKm <= radius)
+                .OrderBy(x => x.DistanceKm)
+                .Take(limit)
+                .ToList();
+
+            return Ok(withDistance.Select(x =>
+            {
+                var r = MapToResponse(x.Workshop);
+                r.DistanceKm = Math.Round(x.DistanceKm, 1);
+                return r;
+            }));
+        }
+
+        // ── Konum izni yok — fallback zinciri ─────────────────────────────────────
+        Guid? preferredCityId = null;
+        Guid? preferredDistrictId = null;
+
+        if (currentUser.UserId != null)
+        {
+            var employeeProfile = await db.EmployeeProfiles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
+            preferredCityId = employeeProfile?.PreferredCityId;
+            preferredDistrictId = employeeProfile?.PreferredDistrictId;
+        }
+
+        List<Workshop> result = [];
+
+        // 1. Preferred District
+        if (preferredDistrictId.HasValue)
+        {
+            result = await baseQuery
+                .Where(w => w.DistrictId == preferredDistrictId)
+                .OrderBy(w => w.StartAt)
+                .Take(limit)
+                .ToListAsync();
+        }
+
+        // 2. Aynı şehir
+        if (result.Count == 0 && preferredCityId.HasValue)
+        {
+            result = await baseQuery
+                .Where(w => w.CityId == preferredCityId)
+                .OrderBy(w => w.StartAt)
+                .Take(limit)
+                .ToListAsync();
+        }
+
+        // 3. Popüler workshoplar (en çok katılımcı)
+        if (result.Count == 0)
+        {
+            result = await baseQuery
+                .OrderByDescending(w => w.EnrolledCount)
+                .Take(limit)
+                .ToListAsync();
+        }
+
+        // 4. Son eklenenler (yukarıdakilerin hiçbiri sonuç vermediyse)
+        if (result.Count == 0)
+        {
+            result = await baseQuery
+                .OrderByDescending(w => w.CreatedAt)
+                .Take(limit)
+                .ToListAsync();
+        }
+
+        return Ok(result.Select(MapToResponse));
+    }
+
     [HttpGet("{id:guid}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetById(Guid id)
     {
         var workshop = await db.Workshops
             .Include(w => w.Employer)
+            .Include(w => w.City)
+            .Include(w => w.District)
             .Include(w => w.WorkshopCategories)
                 .ThenInclude(wc => wc.Category)
             .FirstOrDefaultAsync(w => w.Id == id && w.DeletedAt == null);
@@ -206,6 +317,12 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
             Capacity = request.Capacity,
             LocationType = request.LocationType,
             LocationDetail = request.LocationDetail,
+            VenueName = request.VenueName,
+            Address = request.Address,
+            CityId = request.CityId,
+            DistrictId = request.DistrictId,
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
             StartAt = request.StartAt,
             EndAt = request.EndAt,
             Tags = request.Tags ?? [],
@@ -229,6 +346,8 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
 
         var created = await db.Workshops
             .Include(w => w.Employer)
+            .Include(w => w.City)
+            .Include(w => w.District)
             .Include(w => w.WorkshopCategories)
                 .ThenInclude(wc => wc.Category)
             .FirstAsync(w => w.Id == workshop.Id);
@@ -255,6 +374,12 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
         workshop.Capacity = request.Capacity;
         workshop.LocationType = request.LocationType;
         workshop.LocationDetail = request.LocationDetail;
+        workshop.VenueName = request.VenueName;
+        workshop.Address = request.Address;
+        workshop.CityId = request.CityId;
+        workshop.DistrictId = request.DistrictId;
+        workshop.Latitude = request.Latitude;
+        workshop.Longitude = request.Longitude;
         workshop.StartAt = request.StartAt;
         workshop.EndAt = request.EndAt;
         workshop.Tags = request.Tags ?? [];
@@ -276,6 +401,8 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
 
         var updated = await db.Workshops
             .Include(w => w.Employer)
+            .Include(w => w.City)
+            .Include(w => w.District)
             .Include(w => w.WorkshopCategories)
                 .ThenInclude(wc => wc.Category)
             .FirstAsync(w => w.Id == id);
@@ -384,6 +511,23 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
     // Tek doğru yol artık: TicketsController.CheckIn (QR ile) ya da
     // EnrollmentsController.MarkAttended (manuel fallback, PATCH /enrollments/{id}/attend).
 
+    // İki koordinat arası gerçek dünya mesafesi (km) — Haversine formula.
+    private static double HaversineKm(double lat1, double lon1, double lat2, double lon2)
+    {
+        const double earthRadiusKm = 6371.0;
+        var dLat = ToRadians(lat2 - lat1);
+        var dLon = ToRadians(lon2 - lon1);
+
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
+        return earthRadiusKm * c;
+    }
+
+    private static double ToRadians(double degrees) => degrees * Math.PI / 180.0;
+
     private static WorkshopResponse MapToResponse(Workshop w) => new()
     {
         Id = w.Id,
@@ -397,6 +541,14 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
         EnrolledCount = w.EnrolledCount,
         LocationType = w.LocationType,
         LocationDetail = w.LocationDetail,
+        VenueName = w.VenueName,
+        Address = w.Address,
+        City = w.City?.Name,
+        CityId = w.CityId,
+        District = w.District?.Name,
+        DistrictId = w.DistrictId,
+        Latitude = w.Latitude,
+        Longitude = w.Longitude,
         StartAt = w.StartAt,
         EndAt = w.EndAt,
         Status = w.Status,

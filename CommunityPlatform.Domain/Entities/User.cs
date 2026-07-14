@@ -10,7 +10,8 @@ public class User
     public string LastName { get; set; } = null!;
     public string? AvatarUrl { get; set; }
     public string? Bio { get; set; }
-    public string? City { get; set; }
+    public Guid? CityId { get; set; }
+    public Guid? DistrictId { get; set; }
     public string? AdminLevel { get; set; } // super | mid | support
     public bool IsVerified { get; set; } = false;
     public bool IsActive { get; set; } = true;
@@ -22,6 +23,8 @@ public class User
     public string FullName => $"{FirstName} {LastName}".Trim();
 
     // Navigation
+    public City? City { get; set; }
+    public District? District { get; set; }
     public EmployerProfile? EmployerProfile { get; set; }
     public EmployeeProfile? EmployeeProfile { get; set; }
     public CafeProfile? CafeProfile { get; set; }

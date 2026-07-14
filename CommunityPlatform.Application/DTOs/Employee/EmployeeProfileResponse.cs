@@ -9,6 +9,13 @@ public class EmployeeProfileResponse
     public string? AvatarUrl { get; set; }
     public string? CoverImageUrl { get; set; }
     public string? City { get; set; }
+    public Guid? CityId { get; set; }
+    public string? District { get; set; }
+    public Guid? DistrictId { get; set; }
+    public string? PreferredCity { get; set; }
+    public Guid? PreferredCityId { get; set; }
+    public string? PreferredDistrict { get; set; }
+    public Guid? PreferredDistrictId { get; set; }
     public int TotalAttendedWorkshops { get; set; }
     public int XpPoints { get; set; }
     public int RankLevel { get; set; }

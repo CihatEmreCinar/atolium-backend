@@ -11,7 +11,6 @@ public class CafeProfileConfiguration : IEntityTypeConfiguration<CafeProfile>
         builder.HasKey(c => c.Id);
         builder.Property(c => c.Name).HasMaxLength(255).IsRequired();
         builder.Property(c => c.Bio).HasMaxLength(1000);
-        builder.Property(c => c.City).HasMaxLength(120);
         builder.Property(c => c.Address).HasMaxLength(500);
         builder.Property(c => c.AvatarUrl).HasMaxLength(500);
         builder.Property(c => c.CoverImageUrl).HasMaxLength(500);
@@ -20,6 +19,18 @@ public class CafeProfileConfiguration : IEntityTypeConfiguration<CafeProfile>
         builder.HasOne(c => c.User)
             .WithOne(u => u.CafeProfile)
             .HasForeignKey<CafeProfile>(c => c.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(c => c.City)
+            .WithMany()
+            .HasForeignKey(c => c.CityId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(c => c.District)
+            .WithMany()
+            .HasForeignKey(c => c.DistrictId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

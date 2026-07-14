@@ -1,4 +1,3 @@
-using CommunityPlatform.Application.Common;
 using CommunityPlatform.Application.DTOs.Cafe;
 using CommunityPlatform.Application.DTOs.Media;
 using CommunityPlatform.Application.DTOs.Reviews;
@@ -50,6 +49,8 @@ public class CafeProfilesController(
 
         var profile = await db.CafeProfiles
             .Include(p => p.User)
+            .Include(p => p.City)
+            .Include(p => p.District)
             .Include(p => p.CafeProfileCategories)
                 .ThenInclude(cc => cc.Category)
             .FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
@@ -69,6 +70,8 @@ public class CafeProfilesController(
 
         var profile = await db.CafeProfiles
             .Include(p => p.User)
+            .Include(p => p.City)
+            .Include(p => p.District)
             .Include(p => p.CafeProfileCategories)
             .FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
 
@@ -81,8 +84,17 @@ public class CafeProfilesController(
         if (request.Bio != null)
             profile.Bio = request.Bio;
 
-        if (request.City != null)
-            profile.City = request.City;
+        if (request.CityId != null)
+            profile.CityId = request.CityId;
+
+        if (request.DistrictId != null)
+            profile.DistrictId = request.DistrictId;
+
+        if (request.Latitude != null)
+            profile.Latitude = request.Latitude;
+
+        if (request.Longitude != null)
+            profile.Longitude = request.Longitude;
 
         if (request.Address != null)
             profile.Address = request.Address;
@@ -105,6 +117,8 @@ public class CafeProfilesController(
 
         var updated = await db.CafeProfiles
             .Include(p => p.User)
+            .Include(p => p.City)
+            .Include(p => p.District)
             .Include(p => p.CafeProfileCategories)
                 .ThenInclude(cc => cc.Category)
             .FirstAsync(p => p.UserId == currentUser.UserId);
@@ -132,8 +146,7 @@ public class CafeProfilesController(
             return NotFound();
 
         var oldKey = storage.TryGetKeyFromUrl(profile.AvatarUrl);
-        if (!FileUploadValidator.TryGetSafeExtension(file.ContentType, allowVideo: false, out var extension))
-            return BadRequest(new { message = "Desteklenmeyen dosya tipi." });
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         var key = $"cafes/{profile.UserId}/avatar/{Guid.NewGuid()}{extension}";
 
         await using var stream = file.OpenReadStream();
@@ -168,8 +181,7 @@ public class CafeProfilesController(
             return NotFound();
 
         var oldKey = storage.TryGetKeyFromUrl(profile.CoverImageUrl);
-        if (!FileUploadValidator.TryGetSafeExtension(file.ContentType, allowVideo: false, out var extension))
-            return BadRequest(new { message = "Desteklenmeyen dosya tipi." });
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
         var key = $"cafes/{profile.UserId}/cover/{Guid.NewGuid()}{extension}";
 
         await using var stream = file.OpenReadStream();
@@ -190,6 +202,8 @@ public class CafeProfilesController(
     {
         var profile = await db.CafeProfiles
             .Include(p => p.User)
+            .Include(p => p.City)
+            .Include(p => p.District)
             .Include(p => p.CafeProfileCategories)
                 .ThenInclude(cc => cc.Category)
             .FirstOrDefaultAsync(p => p.UserId == id);
@@ -236,8 +250,13 @@ public class CafeProfilesController(
         UserId = profile.UserId,
         Name = profile.Name,
         Bio = profile.Bio,
-        City = profile.City,
+        City = profile.City?.Name,
+        CityId = profile.CityId,
+        District = profile.District?.Name,
+        DistrictId = profile.DistrictId,
         Address = profile.Address,
+        Latitude = profile.Latitude,
+        Longitude = profile.Longitude,
         AvatarUrl = profile.AvatarUrl,
         CoverImageUrl = profile.CoverImageUrl
         ,
