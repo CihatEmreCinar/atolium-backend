@@ -9,7 +9,8 @@ namespace CommunityPlatform.Infrastructure.Services;
 
 public class NotificationService(
     AppDbContext db,
-    IRabbitMqPublisher publisher) : INotificationService
+    IRabbitMqPublisher publisher,
+    IPushNotificationSender pushSender) : INotificationService
 {
     private const string EmailQueue = "notification.email";
 
@@ -30,7 +31,13 @@ public class NotificationService(
         db.Notifications.Add(Build(userId, type, title, body, metadata));
         await db.SaveChangesAsync();
 
-        // 2. Email isteniyorsa kullanıcının adresini al ve kuyruğa ekle
+        // 2. Gerçek OS push bildirimi gönder (Expo). ÖNCEDEN BU ADIM YOKTU — bildirim
+        // sadece DB'ye yazılıyordu, hiçbir zaman push edilmiyordu (event reminder'lar
+        // hariç). "Uygulama içinde görünüyor ama telefonun bildirim panelinde hiç
+        // çıkmıyor" şikayetinin kök nedeni buydu.
+        await pushSender.SendAsync(userId, title, body, new { type = type.ToString(), metadata });
+
+        // 3. Email isteniyorsa kullanıcının adresini al ve kuyruğa ekle
         if (sendEmail)
         {
             var user = await db.Users
@@ -75,7 +82,10 @@ public class NotificationService(
         }));
         await db.SaveChangesAsync();
 
-        // 2. Email isteniyorsa her kullanıcı için kuyruğa ekle
+        // 2. Toplu push — bkz. NotifyAsync'teki not, aynı eksiklik burada da vardı.
+        await pushSender.SendManyAsync(idList, title, body, new { type = type.ToString(), metadata });
+
+        // 3. Email isteniyorsa her kullanıcı için kuyruğa ekle
         if (sendEmail)
         {
             var users = await db.Users

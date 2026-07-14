@@ -18,6 +18,9 @@ public class ReviewsController(AppDbContext db, ICurrentUserService currentUser)
     [AllowAnonymous]
     public async Task<IActionResult> GetAll(Guid workshopId, [FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
+        if (page < 1) page = 1;
+        if (limit is < 1 or > 100) limit = 20;
+
         var reviews = await db.Reviews
             .Include(r => r.User)
             .Where(r => r.WorkshopId == workshopId && r.IsVisible)

@@ -1,3 +1,4 @@
+using CommunityPlatform.Application.Common;
 using CommunityPlatform.Application.DTOs.Posts;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
@@ -226,7 +227,8 @@ public class PostService(
         if (file.Length > maxSize)
             throw new ArgumentException("Dosya boyutu 50 MB'ı geçemez.");
 
-        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!FileUploadValidator.TryGetSafeExtension(file.ContentType, allowVideo: true, out var ext))
+            throw new ArgumentException("Desteklenmeyen dosya tipi.");
         var key = $"posts/{postId}/{Guid.NewGuid()}{ext}";
 
         await using var stream = file.OpenReadStream();

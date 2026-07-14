@@ -15,6 +15,7 @@ public class TagsController(TagService tagService) : ControllerBase
         [FromQuery] string q,
         [FromQuery] int limit = 10)
     {
+        if (limit is < 1 or > 100) limit = 10;
         var result = await tagService.SearchTagsAsync(q, limit);
         return Ok(result);
     }
@@ -24,6 +25,7 @@ public class TagsController(TagService tagService) : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetTrending([FromQuery] int limit = 20)
     {
+        if (limit is < 1 or > 100) limit = 20;
         var result = await tagService.GetTrendingTagsAsync(limit);
         return Ok(result);
     }
@@ -36,6 +38,7 @@ public class TagsController(TagService tagService) : ControllerBase
         [FromQuery] string? cursor,
         [FromQuery] int limit = 20)
     {
+        if (limit is < 1 or > 100) limit = 20;
         var result = await tagService.GetTagFeedAsync(slug, cursor, limit);
         return Ok(result);
     }

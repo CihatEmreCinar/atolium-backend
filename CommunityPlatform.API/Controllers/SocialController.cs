@@ -30,6 +30,7 @@ public class SocialController(SocialService socialService) : ControllerBase
         [FromQuery] string? cursor,
         [FromQuery] int limit = 20)
     {
+        if (limit is < 1 or > 100) limit = 20;
         var result = await socialService.GetCommentsAsync(id, cursor, limit);
         return Ok(result);
     }
@@ -68,6 +69,7 @@ public class SocialController(SocialService socialService) : ControllerBase
         [FromQuery] string? cursor,
         [FromQuery] int limit = 20)
     {
+        if (limit is < 1 or > 100) limit = 20;
         var result = await socialService.GetFollowersAsync(userId, cursor, limit);
         return Ok(result);
     }
@@ -80,6 +82,7 @@ public class SocialController(SocialService socialService) : ControllerBase
         [FromQuery] string? cursor,
         [FromQuery] int limit = 20)
     {
+        if (limit is < 1 or > 100) limit = 20;
         var result = await socialService.GetFollowingAsync(userId, cursor, limit);
         return Ok(result);
     }

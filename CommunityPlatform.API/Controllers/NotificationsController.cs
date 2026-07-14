@@ -18,6 +18,9 @@ public class NotificationsController(
     [HttpGet]
     public async Task<IActionResult> GetMine([FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
+        if (page < 1) page = 1;
+        if (limit is < 1 or > 100) limit = 20;
+
         if (currentUser.UserId == null)
             return Unauthorized();
 

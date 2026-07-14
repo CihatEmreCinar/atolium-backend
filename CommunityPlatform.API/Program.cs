@@ -41,7 +41,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IStorageProvider, LocalStorageProvider>();
 builder.Services.AddScoped<ITicketSigningService, TicketSigningService>();
-builder.Services.AddHttpClient(); // ReminderDispatchJob → Expo Push API
+builder.Services.AddHttpClient(); // ReminderDispatchJob → Expo Push API Kozmetik, kod etkilemiyor // PushNotificationSender → Expo Push API
 // ─── Sosyal Feed Servisleri ───────────────────────────────────────────────────
 builder.Services.AddScoped<PostService>();
 builder.Services.AddScoped<SocialService>();

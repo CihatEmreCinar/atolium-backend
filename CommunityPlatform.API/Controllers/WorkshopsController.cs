@@ -17,8 +17,8 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
     [AllowAnonymous]
     public async Task<IActionResult> GetAll([FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
-        if (page <1 ) page =1;
-        if (limit < 1 || limit > 100) limit=20;
+        if (page < 1) page = 1;
+        if (limit < 1 || limit > 100) limit = 20;
 
         var query = db.Workshops
             .Include(w => w.Employer)
@@ -27,7 +27,10 @@ public class WorkshopsController(AppDbContext db, ICurrentUserService currentUse
             .Where(w => w.DeletedAt == null)
             .AsQueryable();
 
-            query = query.Where(w => w.Status == "published");
+        // Anonim liste endpoint'i — status parametresi ne olursa olsun yalnızca
+        // yayınlanmış workshoplar görünür. Taslak/iptal edilmiş workshopları
+        // görmek için WorkshopsController.GetMine (sahiplik kontrollü) kullanılmalı.
+        query = query.Where(w => w.Status == "published");
 
         var workshops = await query
             .OrderByDescending(w => w.CreatedAt)

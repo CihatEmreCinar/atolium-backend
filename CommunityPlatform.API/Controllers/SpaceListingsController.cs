@@ -1,3 +1,4 @@
+using CommunityPlatform.Application.Common;
 using CommunityPlatform.Application.DTOs.Media;
 using CommunityPlatform.Application.DTOs.SpaceListings;
 using CommunityPlatform.Application.Interfaces;
@@ -186,7 +187,8 @@ public class SpaceListingsController(
         if (listing.CafeProfile.UserId != currentUser.UserId.Value)
             return Forbid();
 
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!FileUploadValidator.TryGetSafeExtension(file.ContentType, allowVideo: false, out var extension))
+            return BadRequest(new { message = "Desteklenmeyen dosya tipi." });
         var key = $"spaces/{listing.Id}/{Guid.NewGuid()}{extension}";
 
         await using var stream = file.OpenReadStream();

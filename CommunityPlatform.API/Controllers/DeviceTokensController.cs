@@ -30,9 +30,6 @@ public class DeviceTokensController(
         if (!AllowedPlatforms.Contains(request.Platform))
             return BadRequest(new { message = "platform 'ios' veya 'android' olmalı." });
 
-        // ExpoPushToken bir cihaza aittir; aynı cihazda farklı bir kullanıcı
-        // giriş yapmış olabilir (logout/login), bu yüzden token üzerinden
-        // global arıyoruz ve bulunursa kullanıcıyı güncelliyoruz.
         var existing = await db.DeviceTokens.FirstOrDefaultAsync(t => t.ExpoPushToken == request.ExpoPushToken);
 
         if (existing == null)
@@ -69,6 +66,51 @@ public class DeviceTokensController(
             .ToListAsync();
 
         return Ok(tokens);
+    }
+
+    // TEŞHİS AMAÇLI: kendi kayıtlı token'larına test push'u gönderir ve Expo'nun HAM
+    // cevabını doğrudan response'ta döndürür — sunucu loguna bakmaya gerek kalmaz.
+    // "status":"error" görürsen details.error alanı gerçek sebebi söyler (en sık
+    // "DeviceNotRegistered" = token geçersiz/eski, "InvalidCredentials" = Expo/EAS
+    // projesine APNs key hiç yüklenmemiş — iOS'ta push'un hiç düşmemesinin en yaygın
+    // sebebi budur).
+    [HttpPost("test-push")]
+    public async Task<IActionResult> TestPush([FromServices] IHttpClientFactory httpClientFactory)
+    {
+        if (currentUser.UserId == null)
+            return Unauthorized();
+
+        var tokens = await db.DeviceTokens
+            .Where(t => t.UserId == currentUser.UserId.Value)
+            .ToListAsync();
+
+        if (tokens.Count == 0)
+            return BadRequest(new { message = "Bu kullanıcıya ait kayıtlı cihaz token'ı yok — önce uygulamayı açıp push izni vermen lazım." });
+
+        var client = httpClientFactory.CreateClient();
+        var results = new List<object>();
+
+        foreach (var token in tokens)
+        {
+            var response = await client.PostAsJsonAsync("https://exp.host/--/api/v2/push/send", new
+            {
+                to = token.ExpoPushToken,
+                title = "Test bildirimi",
+                body = "Bu bir test push'u — görüyorsan sistem çalışıyor demektir."
+            });
+
+            var rawBody = await response.Content.ReadAsStringAsync();
+
+            results.Add(new
+            {
+                token.Platform,
+                tokenPreview = token.ExpoPushToken.Length > 20 ? token.ExpoPushToken[..20] + "..." : token.ExpoPushToken,
+                httpStatus = (int)response.StatusCode,
+                expoRawResponse = rawBody
+            });
+        }
+
+        return Ok(results);
     }
 
     // Logout'ta çağrılır — kullanıcıya ait o token'ı siler.

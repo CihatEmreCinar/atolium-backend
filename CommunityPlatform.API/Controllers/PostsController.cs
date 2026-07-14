@@ -84,6 +84,7 @@ public class PostsController(PostService postService) : ControllerBase
         [FromQuery] string? cursor,
         [FromQuery] int limit = 15)
     {
+        if (limit is < 1 or > 100) limit = 15;
         var result = await postService.GetUserPostsAsync(userId, cursor, limit);
         return Ok(result);
     }

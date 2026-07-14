@@ -1,3 +1,4 @@
+using CommunityPlatform.Application.Common;
 using CommunityPlatform.Application.DTOs.Cafe;
 using CommunityPlatform.Application.DTOs.Media;
 using CommunityPlatform.Application.DTOs.Reviews;
@@ -131,7 +132,8 @@ public class CafeProfilesController(
             return NotFound();
 
         var oldKey = storage.TryGetKeyFromUrl(profile.AvatarUrl);
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!FileUploadValidator.TryGetSafeExtension(file.ContentType, allowVideo: false, out var extension))
+            return BadRequest(new { message = "Desteklenmeyen dosya tipi." });
         var key = $"cafes/{profile.UserId}/avatar/{Guid.NewGuid()}{extension}";
 
         await using var stream = file.OpenReadStream();
@@ -166,7 +168,8 @@ public class CafeProfilesController(
             return NotFound();
 
         var oldKey = storage.TryGetKeyFromUrl(profile.CoverImageUrl);
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!FileUploadValidator.TryGetSafeExtension(file.ContentType, allowVideo: false, out var extension))
+            return BadRequest(new { message = "Desteklenmeyen dosya tipi." });
         var key = $"cafes/{profile.UserId}/cover/{Guid.NewGuid()}{extension}";
 
         await using var stream = file.OpenReadStream();

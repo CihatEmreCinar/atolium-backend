@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddScoped<JwtService>();
         services.AddScoped<AuthService>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IPushNotificationSender, PushNotificationSender>();
 
         return services;
     }

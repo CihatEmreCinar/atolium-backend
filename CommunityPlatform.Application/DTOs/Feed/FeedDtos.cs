@@ -5,7 +5,12 @@ public class FeedRequest
     /// <summary>Cursor-based pagination token — ilk istekte boş bırakılır</summary>
     public string? Cursor { get; set; }
 
-    public int Limit { get; set; } = 20;
+    private int _limit = 20;
+    public int Limit
+    {
+        get => _limit;
+        set => _limit = value is < 1 or > 100 ? 20 : value;
+    }
 
     /// <summary>Tag slug listesi — filtrele. Boşsa tümü gelir.</summary>
     public List<string> Tags { get; set; } = new();

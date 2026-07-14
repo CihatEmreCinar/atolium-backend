@@ -14,6 +14,9 @@ public class AdminController(AppDbContext db) : ControllerBase
     [HttpGet("users")]
     public async Task<IActionResult> GetUsers([FromQuery] string? role, [FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
+        if (page < 1) page = 1;
+        if (limit is < 1 or > 100) limit = 20;
+
         var query = db.Users.AsQueryable();
 
         if (!string.IsNullOrEmpty(role))
@@ -78,6 +81,9 @@ public class AdminController(AppDbContext db) : ControllerBase
     [HttpGet("workshops")]
     public async Task<IActionResult> GetWorkshopsForModeration([FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int limit = 20)
     {
+        if (page < 1) page = 1;
+        if (limit is < 1 or > 100) limit = 20;
+
         var query = db.Workshops.Include(w => w.Employer).AsQueryable();
 
         if (!string.IsNullOrEmpty(status))

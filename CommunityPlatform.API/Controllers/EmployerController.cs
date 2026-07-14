@@ -1,3 +1,4 @@
+using CommunityPlatform.Application.Common;
 using CommunityPlatform.Application.DTOs.Employer;
 using CommunityPlatform.Application.DTOs.Media;
 using CommunityPlatform.Application.Interfaces;
@@ -37,7 +38,8 @@ public class EmployerController(
 
         var oldKey = storage.TryGetKeyFromUrl(profile.CoverImageUrl);
 
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!FileUploadValidator.TryGetSafeExtension(file.ContentType, allowVideo: false, out var extension))
+            return BadRequest(new { message = "Desteklenmeyen dosya tipi." });
         var key = $"employers/{profile.UserId}/cover/{Guid.NewGuid()}{extension}";
 
         await using var stream = file.OpenReadStream();
