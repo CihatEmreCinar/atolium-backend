@@ -236,7 +236,14 @@ public class EnrollmentsController(
         enrollment.Status = "confirmed";
         enrollment.Workshop.EnrolledCount += 1;
 
+        try
+        {
         await db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+        return Conflict(new { message = "Kapasite eşzamanlı bir istekle doldu, lütfen tekrar deneyin." });
+        }
 
         await reminderService.CreateRemindersAsync(
             enrollment.UserId, ReminderSourceType.Workshop, enrollment.WorkshopId, enrollment.Workshop.StartAt);

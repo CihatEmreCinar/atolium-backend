@@ -22,5 +22,13 @@ public class WorkshopConfiguration : IEntityTypeConfiguration<Workshop>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasQueryFilter(w => w.DeletedAt == null);
+       // M-2: Postgres'in her tabloda var olan xmin sistem kolonunu concurrency
+       // token olarak kullanıyoruz — kapasite onaylamadaki race condition'ı önler.
+        builder.Property(w => w.Version)
+           .HasColumnName("xmin")
+           .HasColumnType("xid")
+           .ValueGeneratedOnAddOrUpdate()
+           .IsConcurrencyToken();
+
     }
 }

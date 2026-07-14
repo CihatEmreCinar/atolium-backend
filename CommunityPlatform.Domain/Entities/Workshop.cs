@@ -21,6 +21,7 @@ public class Workshop
     public bool IsFeatured { get; set; } = false;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DeletedAt { get; set; }
+    public uint Version { get; set; } // Postgres xmin sistem kologuna eşlenecek — concurrency token
 
     // Navigation
     public User Employer { get; set; } = null!;
