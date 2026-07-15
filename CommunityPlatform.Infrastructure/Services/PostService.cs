@@ -219,9 +219,13 @@ public class PostService(
                 ?? throw new KeyNotFoundException("Post bulunamadı.");
         }
 
-        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp", "video/mp4" };
+        // Client artık her görseli yükleme öncesi WebP'ye transcode ediyor (bkz.
+        // postService.ts) — burada JPEG/PNG'yi de kabul etmek storage maliyeti
+        // hedefini (WebP'nin sağladığı boyut avantajını) client tarafında bir
+        // hata/eski build durumunda sessizce delebilir. Bilerek sadece webp+mp4.
+        var allowedTypes = new[] { "image/webp", "video/mp4" };
         if (!allowedTypes.Contains(file.ContentType))
-            throw new ArgumentException("Desteklenmeyen dosya tipi.");
+            throw new ArgumentException("Desteklenmeyen dosya tipi. Görseller WebP, videolar mp4 olmalı.");
 
         const long maxSize = 50 * 1024 * 1024;
         if (file.Length > maxSize)

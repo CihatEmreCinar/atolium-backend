@@ -143,7 +143,7 @@ public class EmployerController(
             .CountAsync(e => workshopIds.Contains(e.WorkshopId) && e.Status != "cancelled");
 
         var pendingEnrollments = await db.Enrollments
-            .CountAsync(e => workshopIds.Contains(e.WorkshopId) && e.Status == "confirmed");
+            .CountAsync(e => workshopIds.Contains(e.WorkshopId) && e.Status == "pending");
 
         var reviewCount = await db.Reviews
             .CountAsync(r => r.WorkshopId != null && workshopIds.Contains(r.WorkshopId.Value));
