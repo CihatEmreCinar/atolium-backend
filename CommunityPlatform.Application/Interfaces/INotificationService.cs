@@ -27,4 +27,19 @@ public interface INotificationService
         string body,
         object? metadata = null,
         bool sendEmail = false);
+
+    /// <summary>
+    /// QR biletli özel bilet e-postasını (TicketEvent) doğrudan yayınlar.
+    /// NotifyAsync'ten bağımsızdır — in-app/push bildirim üretmez, yalnızca
+    /// NotificationService worker'ındaki Ticket.html şablonuyla e-posta gönderir.
+    /// WorkshopTicket oluşturulduktan hemen sonra (approve akışında) çağrılmalıdır.
+    /// </summary>
+    Task SendTicketEmailAsync(
+        string toEmail,
+        string displayName,
+        string workshopTitle,
+        DateTime workshopStartsAtUtc,
+        string locationName,
+        string ticketCode,
+        byte[] qrCodePng);
 }

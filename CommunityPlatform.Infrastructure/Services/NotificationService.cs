@@ -1,10 +1,8 @@
 using System.Text.Json;
-using CommunityPlatform.Application.DTOs.Notifications;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Encodings.Web;
 
 namespace CommunityPlatform.Infrastructure.Services;
 
@@ -32,10 +30,7 @@ public class NotificationService(
         db.Notifications.Add(Build(userId, type, title, body, metadata));
         await db.SaveChangesAsync();
 
-        // 2. Gerçek OS push bildirimi gönder (Expo). ÖNCEDEN BU ADIM YOKTU — bildirim
-        // sadece DB'ye yazılıyordu, hiçbir zaman push edilmiyordu (event reminder'lar
-        // hariç). "Uygulama içinde görünüyor ama telefonun bildirim panelinde hiç
-        // çıkmıyor" şikayetinin kök nedeni buydu.
+        // 2. Gerçek OS push bildirimi gönder (Expo).
         await pushSender.SendAsync(userId, title, body, new { type = type.ToString(), metadata });
 
         // 3. Email isteniyorsa kullanıcının adresini al ve kuyruğa ekle
@@ -47,11 +42,7 @@ public class NotificationService(
 
             if (user?.Email != null)
             {
-            await publisher.PublishAsync(EmailQueue, new
-            {
-                EventType = "GenericNotificationEvent",
-                Payload = new { ToEmail = user.Email, Title = title, Body = body }
-            });
+                await PublishGenericNotificationEmailAsync(user.Email, title, body);
             }
         }
     }
@@ -81,7 +72,7 @@ public class NotificationService(
         }));
         await db.SaveChangesAsync();
 
-        // 2. Toplu push — bkz. NotifyAsync'teki not, aynı eksiklik burada da vardı.
+        // 2. Toplu push
         await pushSender.SendManyAsync(idList, title, body, new { type = type.ToString(), metadata });
 
         // 3. Email isteniyorsa her kullanıcı için kuyruğa ekle
@@ -95,18 +86,50 @@ public class NotificationService(
 
             foreach (var user in users)
             {
-              await publisher.PublishAsync(EmailQueue, new
-              {
-                  EventType = "GenericNotificationEvent",
-                  Payload = new { ToEmail = user.Email, Title = title, Body = body }
-              });
+                await PublishGenericNotificationEmailAsync(user.Email!, title, body);
             }
         }
+    }
+
+    public async Task SendTicketEmailAsync(
+        string toEmail,
+        string displayName,
+        string workshopTitle,
+        DateTime workshopStartsAtUtc,
+        string locationName,
+        string ticketCode,
+        byte[] qrCodePng)
+    {
+        await publisher.PublishAsync(EmailQueue, new
+        {
+            EventType = "TicketEvent",
+            Payload = new
+            {
+                ToEmail = toEmail,
+                DisplayName = displayName,
+                WorkshopTitle = workshopTitle,
+                // DateTimeOffset'e sıfır offset ile açıkça sarmalanıyor: Postgres'ten gelen
+                // DateTime'ın Kind'i (Utc/Unspecified) ne olursa olsun, worker tarafında
+                // DateTimeOffset'e deserialize edilirken yanlış yerel saat dilimi
+                // varsayılmasını engeller.
+                WorkshopStartsAtUtc = new DateTimeOffset(DateTime.SpecifyKind(workshopStartsAtUtc, DateTimeKind.Utc)),
+                LocationName = locationName,
+                TicketCode = ticketCode,
+                QrCodePng = qrCodePng
+            }
+        });
     }
 
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    private Task PublishGenericNotificationEmailAsync(string toEmail, string title, string body) =>
+        publisher.PublishAsync(EmailQueue, new
+        {
+            EventType = "GenericNotificationEvent",
+            Payload = new { ToEmail = toEmail, Title = title, Body = body }
+        });
 
     private static Notification Build(
         Guid userId,
@@ -124,4 +147,4 @@ public class NotificationService(
             ? JsonSerializer.Serialize(metadata, JsonOptions)
             : null
     };
-  }
+}

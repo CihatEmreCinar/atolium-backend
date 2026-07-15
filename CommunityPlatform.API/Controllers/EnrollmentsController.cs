@@ -7,6 +7,7 @@ using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace CommunityPlatform.API.Controllers;
 
@@ -18,7 +19,9 @@ public class EnrollmentsController(
     ICurrentUserService currentUser,
     INotificationService notifications,
     IReminderService reminderService,
-    ITicketSigningService signingService) : ControllerBase
+    ITicketSigningService signingService,
+    IQrCodeGenerator qrCodeGenerator,
+    ILogger<EnrollmentsController> logger) : ControllerBase
 {
     // Employee atölyeye kayıt başvurusu yapar → "pending"
     [HttpPost]
@@ -118,8 +121,8 @@ public class EnrollmentsController(
         return Ok(MapToResponse(enrollment, enrollment.Workshop));
     }
 
-    // Employee: kendi bileti — geçerli (kullanılmamış/iptal edilmemiş/süresi geçmemiş) bir
-    // bilet varsa onu döner, yoksa yeni imzalı bilet üretir. Sadece confirmed kayıtlar bilet alır.
+    // Employee: kendi bileti. ARTIK BİLET ÜRETMEZ — yalnızca approve aşamasında
+    // zaten oluşturulmuş olan bileti döner (GET side-effect üretmemeli).
     [HttpGet("{id}/ticket")]
     [Authorize(Roles = "employee")]
     public async Task<IActionResult> GetTicket(Guid id)
@@ -146,22 +149,18 @@ public class EnrollmentsController(
 
         if (ticket == null)
         {
-            // Bilet workshop bitişinden 4 saat sonrasına kadar geçerli — geç check-in'e izin verir.
-            var expiresAt = enrollment.Workshop.EndAt.AddHours(4);
-            var ticketId = Guid.NewGuid();
-            var nonce = signingService.GenerateNonce();
+            // Confirmed bir enrollment'ın bileti Approve aşamasında (aynı transaction
+            // içinde) oluşturulmuş olmalıydı. Buraya düşülmesi bir uygulama hatasıdır —
+            // approve akışında bir sorun olduğuna işaret eder (ör. bu düzeltmeden ÖNCE
+            // onaylanmış, dolayısıyla bileti hiç üretilmemiş eski bir kayıt).
+            logger.LogError(
+                "Confirmed enrollment {EnrollmentId} için geçerli bir WorkshopTicket bulunamadı.",
+                enrollment.Id);
 
-            ticket = new WorkshopTicket
+            return StatusCode(StatusCodes.Status500InternalServerError, new
             {
-                Id = ticketId,
-                EnrollmentId = enrollment.Id,
-                ExpiresAt = expiresAt,
-                Nonce = nonce,
-                Signature = signingService.Sign(ticketId, nonce, expiresAt)
-            };
-
-            db.WorkshopTickets.Add(ticket);
-            await db.SaveChangesAsync();
+                message = "Bilet bulunamadı. Bu beklenmeyen bir durum — lütfen destek ekibiyle iletişime geçin."
+            });
         }
 
         return Ok(new TicketResponse
@@ -178,7 +177,7 @@ public class EnrollmentsController(
             ParticipantName = $"{enrollment.User.FirstName} {enrollment.User.LastName}",
             EnrollmentStatus = enrollment.Status,
             AttendanceStatus = enrollment.AttendanceStatus.ToString(),
-            QrPayload = $"{ticket.Id:N}.{ticket.Signature}",
+            QrPayload = BuildQrPayload(ticket),
             ExpiresAt = ticket.ExpiresAt
         });
     }
@@ -213,12 +212,15 @@ public class EnrollmentsController(
     }
 
     // Employer başvuruyu onaylar → "pending" → "confirmed"
+    // Bilet, onayla AYNI transaction içinde üretilir: approve başarılıysa bilet garanti
+    // vardır (bkz. GetTicket — artık bilet üretmiyor, yalnızca döndürüyor).
     [HttpPatch("{id}/approve")]
     [Authorize(Roles = "employer")]
     public async Task<IActionResult> Approve(Guid id)
     {
         var enrollment = await db.Enrollments
             .Include(e => e.Workshop)
+            .Include(e => e.User)
             .FirstOrDefaultAsync(e => e.Id == id);
 
         if (enrollment == null)
@@ -236,18 +238,35 @@ public class EnrollmentsController(
         enrollment.Status = "confirmed";
         enrollment.Workshop.EnrolledCount += 1;
 
+        // Bilet workshop bitişinden 4 saat sonrasına kadar geçerli — geç check-in'e izin verir.
+        var ticketId = Guid.NewGuid();
+        var nonce = signingService.GenerateNonce();
+        var expiresAt = enrollment.Workshop.EndAt.AddHours(4);
+
+        var ticket = new WorkshopTicket
+        {
+            Id = ticketId,
+            EnrollmentId = enrollment.Id,
+            ExpiresAt = expiresAt,
+            Nonce = nonce,
+            Signature = signingService.Sign(ticketId, nonce, expiresAt)
+        };
+
+        db.WorkshopTickets.Add(ticket);
+
         try
         {
-        await db.SaveChangesAsync();
+            await db.SaveChangesAsync();
         }
         catch (DbUpdateConcurrencyException)
         {
-        return Conflict(new { message = "Kapasite eşzamanlı bir istekle doldu, lütfen tekrar deneyin." });
+            return Conflict(new { message = "Kapasite eşzamanlı bir istekle doldu, lütfen tekrar deneyin." });
         }
 
         await reminderService.CreateRemindersAsync(
             enrollment.UserId, ReminderSourceType.Workshop, enrollment.WorkshopId, enrollment.Workshop.StartAt);
 
+        // 1) Genel onay bildirimi (in-app + push + "Kaydınız onaylandı" maili)
         await notifications.NotifyAsync(
             userId:    enrollment.UserId,
             type:      NotificationType.ApplicationApproved,
@@ -255,6 +274,18 @@ public class EnrollmentsController(
             body:      $"\"{enrollment.Workshop.Title}\" atölyesine katılım talebiniz onaylandı.",
             metadata:  new { workshopId = enrollment.WorkshopId, route = "workshop/detail" },
             sendEmail: true);
+
+        // 2) Ayrı ve özel bilet maili — QR kod PNG olarak üretilip TicketEvent ile gönderilir.
+        var qrCodePng = qrCodeGenerator.GeneratePng(BuildQrPayload(ticket));
+
+        await notifications.SendTicketEmailAsync(
+            toEmail:             enrollment.User.Email,
+            displayName:         enrollment.User.FullName,
+            workshopTitle:       enrollment.Workshop.Title,
+            workshopStartsAtUtc: enrollment.Workshop.StartAt,
+            locationName:        FormatLocationName(enrollment.Workshop),
+            ticketCode:          BuildTicketCode(ticket),
+            qrCodePng:           qrCodePng);
 
         return Ok(new
         {
@@ -371,6 +402,18 @@ public class EnrollmentsController(
 
         return Ok(result);
     }
+
+    // QR içeriği ve doğrulama akışı (TicketsController.CheckIn) ile birebir aynı formatı
+    // kullanır — burada değiştirilirse doğrulama tarafı da güncellenmelidir.
+    private static string BuildQrPayload(WorkshopTicket ticket) => $"{ticket.Id:N}.{ticket.Signature}";
+
+    // Yalnızca görsel/okunabilir bir referans kodu — güvenlik Signature/Nonce'da,
+    // bu koddaki hiçbir bilgi doğrulama için kullanılmaz.
+    private static string BuildTicketCode(WorkshopTicket ticket) => $"ATL-{ticket.Id:N}"[..12].ToUpperInvariant();
+
+    private static string FormatLocationName(Workshop workshop) => workshop.LocationType == "online"
+        ? "Online"
+        : workshop.VenueName ?? workshop.LocationDetail ?? "Belirtilmedi";
 
     private static EnrollmentResponse MapToResponse(Enrollment e, Workshop w) => new()
     {

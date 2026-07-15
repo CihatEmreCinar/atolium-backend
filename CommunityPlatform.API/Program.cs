@@ -41,6 +41,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IStorageProvider, LocalStorageProvider>();
 builder.Services.AddScoped<ITicketSigningService, TicketSigningService>();
+builder.Services.AddSingleton<IQrCodeGenerator, QrCodeGenerator>(); // stateless, thread-safe
 builder.Services.AddHttpClient(); // ReminderDispatchJob → Expo Push API
 // ─── Sosyal Feed Servisleri ───────────────────────────────────────────────────
 builder.Services.AddScoped<PostService>();
