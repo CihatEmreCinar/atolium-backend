@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Handlebars.Net" Version="2.1.6" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
     <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
     <PackageReference Include="MailKit" Version="4.17.0" />
@@ -16,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Assets\logo.png" CopyToOutputDirectory="PreserveNewest"/>
+    <None Include="Assets\logo.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   
 </Project>

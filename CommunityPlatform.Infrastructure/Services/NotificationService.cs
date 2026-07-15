@@ -47,13 +47,11 @@ public class NotificationService(
 
             if (user?.Email != null)
             {
-                await publisher.PublishAsync(EmailQueue, new EmailMessage
-                {
-                    To = user.Email,
-                    Subject = title,
-                    Body = BuildEmailBody(title, body),
-                    IsHtml = true
-                });
+            await publisher.PublishAsync(EmailQueue, new
+            {
+                EventType = "GenericNotificationEvent",
+                Payload = new { ToEmail = user.Email, Title = title, Body = body }
+            });
             }
         }
     }
@@ -97,13 +95,11 @@ public class NotificationService(
 
             foreach (var user in users)
             {
-                await publisher.PublishAsync(EmailQueue, new EmailMessage
-                {
-                    To = user.Email!,
-                    Subject = title,
-                    Body = BuildEmailBody(title, body),
-                    IsHtml = true
-                });
+              await publisher.PublishAsync(EmailQueue, new
+              {
+                  EventType = "GenericNotificationEvent",
+                  Payload = new { ToEmail = user.Email, Title = title, Body = body }
+              });
             }
         }
     }
@@ -128,216 +124,4 @@ public class NotificationService(
             ? JsonSerializer.Serialize(metadata, JsonOptions)
             : null
     };
-
-    private static string BuildEmailBody(string title, string body) => """
-<!DOCTYPE html>
-    <html lang="tr" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-    <head>
-    <meta charset="utf-8">
-    <meta name="x-apple-disable-message-reformatting">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="format-detection" content="telephone=no, date=no, address=no, email=no">
-    <title>{{EmailTitle}}</title>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
-      body {
-        margin: 0;
-        padding: 0;
-        width: 100%;
-        word-break: break-word;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        background-color: #F8F8F5;
-      }
-
-      img {
-        max-width: 100%;
-        vertical-align: middle;
-        line-height: 100%;
-        border: 0;
-      }
-
-      table {
-        border-collapse: collapse;
-        mso-table-lspace: 0pt;
-        mso-table-rspace: 0pt;
-      }
-
-      a { text-decoration: none; }
-
-      .btn:hover { background-color: #104F54 !important; transition: background-color 0.2s ease; }
-      .btn-secondary:hover { background-color: #F8F8F5 !important; transition: background-color 0.2s ease; }
-
-      /* Responsive Grid */
-      @media (max-width: 640px) {
-        .card-container { width: 100% !important; padding: 0 16px !important; }
-        .card { border-radius: 16px !important; }
-        .hero-pad { padding: 40px 24px 32px 24px !important; }
-        .content-pad { padding: 40px 24px 40px 24px !important; }
-        .info-pad { padding: 0 24px 32px 24px !important; }
-        .footer-pad { padding: 32px 24px 40px 24px !important; }
-        .title { font-size: 26px !important; letter-spacing: -0.6px !important; }
-        .text-content { max-width: 100% !important; }
-      }
-
-      /* Dark Mode Defaults */
-      @media (prefers-color-scheme: dark) {
-        /* Müşteri talebi premium olduğu için dark mode özel renkler eklenebilir, şimdilik native kalacak */
-      }
-    </style>
-  </head>
-  <body style="margin:0;padding:0;width:100%;background-color:#F8F8F5;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-    <div role="article" aria-roledescription="email" aria-label="{{EmailTitle}}" lang="tr">
-      
-      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#F8F8F5;">
-        <tr>
-          <td align="center" style="padding: 40px 0 32px 0;" class="card-container">
-            
-            <table class="card" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:640px;margin:0 auto;background-color:#FFFFFF;border:1px solid #ECE8E1;border-radius:24px;overflow:hidden;box-shadow:0 4px 24px rgba(26,26,26,0.02);">
-              
-              <tr>
-                <td class="hero-pad" style="padding:48px 56px 40px 56px;text-align:center;background-color:#FAF9F6;border-bottom:1px solid #F3F1EC;">
-                  <a href="{{Website}}" target="_blank" style="text-decoration:none;display:inline-block;">
-                    <img src="{{DATA:IMAGE:IMAGE_3}}" width="64" height="64" alt="Atolium" style="width:64px;height:64px;border-radius:16px;display:block;margin:0 auto;">
-                  </a>
-                  
-                  <div style="margin-top:16px;font-size:12px;font-weight:700;letter-spacing:0.25em;color:#1A1A1A;text-transform:uppercase;">
-                    ATOLIUM
-                  </div>
-                  <div style="margin-top:8px;font-size:12px;font-weight:500;letter-spacing:0.2px;color:#727272;">
-                    Curated Creative Experiences
-                  </div>
-
-                  {{#if HeroIconUrl}}
-                  <div style="margin-top:40px;">
-                    <img src="{{HeroIconUrl}}" width="72" height="72" alt="" style="width:72px;height:72px;display:block;margin:0 auto;">
-                  </div>
-                  {{/if}}
-                </td>
-              </tr>
-
-              <tr>
-                <td class="content-pad" style="padding:56px 56px 48px 56px;">
-                  <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-                    <tr>
-                      <td align="left">
-                        <div class="text-content" style="max-width:420px;">
-                          
-                          <h1 class="title" style="margin:0 0 16px 0;font-size:30px;font-weight:700;letter-spacing:-0.8px;color:#1A1A1A;line-height:1.3;mso-line-height-rule:exactly;">
-                            {{EmailTitle}}
-                          </h1>
-                          
-                          <div style="margin:0;font-size:16px;font-weight:500;line-height:1.7;color:#555555;mso-line-height-rule:exactly;">
-                            {{Content}}
-                          </div>
-
-                          {{#if ButtonUrl}}
-                          <table cellpadding="0" cellspacing="0" role="presentation" style="margin-top:40px;">
-                            <tr>
-                              <td style="border-radius:999px;background-color:#155E63;">
-                                <a href="{{ButtonUrl}}" target="_blank" class="btn" style="display:inline-block;padding:15px 32px;background-color:#155E63;color:#FFFFFF;font-size:15px;font-weight:600;text-decoration:none;border-radius:999px;line-height:22px;text-align:center;">
-                                  {{ButtonText}}
-                                </a>
-                                </td>
-                              
-                              {{#if SecondaryButtonUrl}}
-                              <td style="padding-left:16px;">
-                                <a href="{{SecondaryButtonUrl}}" target="_blank" class="btn-secondary" style="display:inline-block;padding:14px 24px;background-color:#FFFFFF;color:#1A1A1A;font-size:15px;font-weight:600;text-decoration:none;border-radius:999px;line-height:22px;border:1px solid #ECE8E1;text-align:center;">
-                                  {{SecondaryButtonText}}
-                                </a>
-                                </td>
-                              {{/if}}
-                            </tr>
-                          </table>
-
-                          <p style="margin:24px 0 0 0;font-size:12px;color:#727272;line-height:1.6;max-width:100%;word-break:break-all;">
-                            Buton çalışmıyorsa, bu bağlantıyı kopyalayın:<br>
-                            <a href="{{ButtonUrl}}" style="color:#727272;text-decoration:underline;">{{ButtonUrl}}</a>
-                          </p>
-                          {{/if}}
-
-                        </div>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-
-              {{#if AdditionalInformation}}
-              <tr>
-                <td class="info-pad" style="padding:0 56px 48px 56px;">
-                  
-                  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FAFAF8;border:1px solid #ECE8E1;border-radius:12px;">
-                    <tr>
-                      <td style="padding:24px;">
-                        <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-                          <tr>
-                            <td width="24" valign="top" style="padding-right:12px;">
-                              <img src="{{InfoIconUrl}}" width="20" height="20" alt="" style="width:20px;height:20px;display:block;margin-top:2px;">
-                            </td>
-                            <td valign="top">
-                              <p style="margin:0 0 4px 0;font-size:12px;font-weight:700;letter-spacing:0.4px;color:#1A1A1A;text-transform:uppercase;">
-                                {{InfoTitle}}
-                              </p>
-                              <p style="margin:0;font-size:14px;line-height:1.6;color:#555555;font-weight:500;">
-                                {{AdditionalInformation}}
-                              </p>
-                            </td>
-                          </tr>
-                        </table>
-                      </td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-              {{/if}}
-
-              <tr>
-                <td style="padding:0 56px;">
-                  <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
-                    <tr>
-                      <td style="height:1px;background-color:#F3F1EC;line-height:1px;font-size:1px;">&nbsp;</td>
-                    </tr>
-                  </table>
-                </td>
-              </tr>
-
-              <tr>
-                <td class="footer-pad" style="padding:40px 56px 48px 56px;">
-                  <p style="margin:0 0 8px 0;font-size:14px;color:#1A1A1A;font-weight:600;">Yardıma mı ihtiyacınız var?</p>
-                  <p style="margin:0 0 32px 0;font-size:14px;">
-                    <a href="mailto:{{SupportEmail}}" style="color:#155E63;font-weight:500;text-decoration:none;">{{SupportEmail}}</a>
-                  </p>
-                  
-                  <p style="margin:0 0 4px 0;font-size:13px;font-weight:600;color:#1A1A1A;">The Atolium Team</p>
-                  <p style="margin:0;font-size:12px;color:#727272;font-weight:500;">Crafting Creative Experiences</p>
-                  <p style="margin:24px 0 0 0;font-size:12px;color:#727272;">Designed & Crafted in Türkiye.</p>
-                </td>
-              </tr>
-              
-            </table>
-            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:640px;margin:32px auto 0 auto;text-align:center;">
-              <tr>
-                <td style="padding:0 24px;">
-                  <p style="margin:0;font-size:12px;color:#727272;line-height:1.8;font-weight:500;">
-                    &copy; {{CurrentYear}} Atolium. Tüm hakları saklıdır.<br>
-                    <a href="{{PrivacyUrl}}" style="color:#727272;text-decoration:underline;">Gizlilik Politikası</a> &nbsp;&bull;&nbsp;
-                    <a href="{{TermsUrl}}" style="color:#727272;text-decoration:underline;">Kullanım Koşulları</a>
-                    {{#if ShowUnsubscribe}}
-                    &nbsp;&bull;&nbsp; <a href="{{UnsubscribeUrl}}" style="color:#727272;text-decoration:underline;">Abonelikten Ayrıl</a>
-                    {{/if}}
-                  </p>
-                </td>
-              </tr>
-            </table>
-            </td>
-        </tr>
-      </table>
-      
-    </div>
-  </body>
-  </html>
-""";
   }

@@ -1,11 +1,10 @@
 using NotificationService.Consumers;
-using NotificationService.Services;
+using NotificationService.Infrastructure;
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((ctx, services) =>
     {
-        services.AddSingleton<EmailSenderService>();
-        services.AddHostedService<EmailConsumer>();
+        services.AddEmailInfrastructure(ctx.Configuration);
     })
     .Build();
 
