@@ -1,4 +1,5 @@
 using CommunityPlatform.Domain.Entities;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace CommunityPlatform.Infrastructure.Persistence;
@@ -42,6 +43,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PostComment> PostComments => Set<PostComment>();
     public DbSet<PostShare> PostShares => Set<PostShare>();
     public DbSet<UserFollow> UserFollows => Set<UserFollow>();
+
+       // ── Media (unified pipeline) ────────────────────────────────────────────
+    public DbSet<Media> Media => Set<Media>();
+    public DbSet<MediaVariant> MediaVariants => Set<MediaVariant>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

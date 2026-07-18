@@ -11,6 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 using CommunityPlatform.Infrastructure.Storage;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
+using Minio;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,13 +42,23 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IReminderService, ReminderService>();
 builder.Services.AddScoped<IStorageProvider, LocalStorageProvider>();
 builder.Services.AddScoped<ITicketSigningService, TicketSigningService>();
-builder.Services.AddSingleton<IQrCodeGenerator, QrCodeGenerator>(); // stateless, thread-safe
 builder.Services.AddHttpClient(); // ReminderDispatchJob → Expo Push API
 // ─── Sosyal Feed Servisleri ───────────────────────────────────────────────────
 builder.Services.AddScoped<PostService>();
 builder.Services.AddScoped<SocialService>();
 builder.Services.AddScoped<FeedService>();
 builder.Services.AddScoped<TagService>();
+
+// ─── Media (unified pipeline) — MinIO ─────────────────────────────────────────
+builder.Services.AddSingleton<IMinioClient>(_ =>
+    new MinioClient()
+        .WithEndpoint(builder.Configuration["Minio:Endpoint"] ?? "localhost:9000")
+        .WithCredentials(
+            builder.Configuration["Minio:AccessKey"] ?? "minioadmin",
+            builder.Configuration["Minio:SecretKey"] ?? "minioadmin")
+        .WithSSL(bool.Parse(builder.Configuration["Minio:UseSSL"] ?? "false"))
+        .Build());
+builder.Services.AddScoped<IMediaObjectStore, MinioMediaObjectStore>();
 
 // ─── Background Jobs ──────────────────────────────────────────────────────────
 builder.Services.AddHostedService<EngagementScoreJob>();
@@ -114,6 +125,13 @@ using (var seedScope = app.Services.CreateScope())
 {
     var db = seedScope.ServiceProvider.GetRequiredService<CommunityPlatform.Infrastructure.Persistence.AppDbContext>();
     await CommunityPlatform.Infrastructure.Persistence.SeedData.LocationSeeder.SeedAsync(db);
+}
+
+// MinIO bucket yoksa oluştur — worker de aynısını yapar, ikisi de idempotent.
+using (var mediaScope = app.Services.CreateScope())
+{
+    var mediaStore = mediaScope.ServiceProvider.GetRequiredService<IMediaObjectStore>();
+    await mediaStore.EnsureBucketExistsAsync();
 }
 
 if (app.Environment.IsDevelopment())

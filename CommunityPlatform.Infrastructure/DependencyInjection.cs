@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<AuthService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IPushNotificationSender, PushNotificationSender>();
+        services.AddScoped<IQrCodeGenerator, QrCodeGenerator>();
 
         return services;
     }
