@@ -3,6 +3,7 @@ using CommunityPlatform.Application.DTOs.Users;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
+using CommunityPlatform.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,8 @@ namespace CommunityPlatform.API.Controllers;
 public class UsersController(
     AppDbContext db,
     ICurrentUserService currentUser,
-    IStorageProvider storage) : ControllerBase
+    IStorageProvider storage,
+    SafeUploadService uploads) : ControllerBase
 {
     [HttpPost("me/avatar")]
     [RequestSizeLimit(10_485_760)]
@@ -24,24 +26,14 @@ public class UsersController(
         if (currentUser.UserId == null)
             return Unauthorized();
 
-        if (file.Length == 0)
-            return BadRequest(new { message = "Dosya boş olamaz." });
-
-        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
-        if (!allowedTypes.Contains(file.ContentType))
-            return BadRequest(new { message = "Sadece JPEG, PNG veya WEBP yükleyebilirsiniz." });
-
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == currentUser.UserId);
         if (user == null)
             return NotFound();
 
         var oldKey = storage.TryGetKeyFromUrl(user.AvatarUrl);
 
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        var key = $"users/{user.Id}/avatar/{Guid.NewGuid()}{extension}";
-
         await using var stream = file.OpenReadStream();
-        var saved = await storage.SaveAsync(key, stream, file.ContentType);
+        var saved = await uploads.SaveImageAsync($"users/{user.Id}/avatar", stream, file.Length);
 
         user.AvatarUrl = saved.Url;
         await db.SaveChangesAsync();

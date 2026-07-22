@@ -11,17 +11,20 @@ public class LocalStorageProvider(
     private readonly string _basePath = Path.Combine(
         env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"),
         "uploads");
+    private readonly string _basePathWithSeparator = Path.GetFullPath(Path.Combine(
+        env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"),
+        "uploads")) + Path.DirectorySeparatorChar;
     private readonly string _baseUrl = config["Storage:BaseUrl"] ?? "/uploads";
 
     public async Task<StorageResult> SaveAsync(string key, Stream content, string contentType)
     {
-        var fullPath = Path.Combine(_basePath, key.Replace('/', Path.DirectorySeparatorChar));
+        var fullPath = ResolvePath(key);
         var dir = Path.GetDirectoryName(fullPath)!;
 
         if (!Directory.Exists(dir))
             Directory.CreateDirectory(dir);
 
-        await using var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write);
+        await using var fs = new FileStream(fullPath, FileMode.CreateNew, FileAccess.Write);
         await content.CopyToAsync(fs);
 
         return new StorageResult(key, GetUrl(key), fs.Length);
@@ -29,7 +32,7 @@ public class LocalStorageProvider(
 
     public Task DeleteAsync(string key)
     {
-        var fullPath = Path.Combine(_basePath, key.Replace('/', Path.DirectorySeparatorChar));
+        var fullPath = ResolvePath(key);
         if (File.Exists(fullPath))
             File.Delete(fullPath);
         return Task.CompletedTask;
@@ -55,5 +58,22 @@ public class LocalStorageProvider(
         }
 
         return null;
+    }
+
+    private string ResolvePath(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Dosya anahtarı boş olamaz.", nameof(key));
+
+        var normalizedKey = key.Replace('/', Path.DirectorySeparatorChar)
+            .Replace('\\', Path.DirectorySeparatorChar);
+        if (Path.IsPathRooted(normalizedKey))
+            throw new ArgumentException("Dosya anahtarı kök dizin belirtemez.", nameof(key));
+
+        var fullPath = Path.GetFullPath(Path.Combine(_basePath, normalizedKey));
+        if (!fullPath.StartsWith(_basePathWithSeparator, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Dosya anahtarı yükleme dizini dışına çıkamaz.", nameof(key));
+
+        return fullPath;
     }
 }

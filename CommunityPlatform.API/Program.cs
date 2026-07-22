@@ -168,7 +168,12 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
 }
-app.UseHttpsRedirection();
+// The development profile intentionally exposes the API on the LAN over HTTP so
+// a physical Expo device can reach it. Production continues to enforce HTTPS.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // ─── Güvenlik header'ları ─────────────────────────────────────────────────────
 app.Use(async (context, next) =>

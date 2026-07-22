@@ -13,7 +13,9 @@ public sealed class VerifyEmailEvent : EmailEventBase
 {
     public required string DisplayName { get; init; }
     public required string VerificationUrl { get; init; }
+    public required string VerificationCode { get; init; }
     public TimeSpan ExpiresIn { get; init; } = TimeSpan.FromHours(24);
+    public TimeSpan OtpExpiresIn { get; init; } = TimeSpan.FromMinutes(10);
 }
 
 [EmailTemplate(EmailTemplateNames.MagicLink)]

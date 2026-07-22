@@ -3,6 +3,7 @@ using CommunityPlatform.Application.DTOs.Media;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
+using CommunityPlatform.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,7 +13,7 @@ namespace CommunityPlatform.API.Controllers;
 [ApiController]
 [Route("api/v1/employee")]
 [Authorize(Roles = "employee")]
-public class EmployeeController(AppDbContext db, ICurrentUserService currentUser, IStorageProvider storage) : ControllerBase
+public class EmployeeController(AppDbContext db, ICurrentUserService currentUser, IStorageProvider storage, SafeUploadService uploads) : ControllerBase
 {
     [HttpPost("profile/cover")]
     [RequestSizeLimit(10_485_760)]
@@ -21,24 +22,14 @@ public class EmployeeController(AppDbContext db, ICurrentUserService currentUser
         if (currentUser.UserId == null)
             return Unauthorized();
 
-        if (file.Length == 0)
-            return BadRequest(new { message = "Dosya boş olamaz." });
-
-        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
-        if (!allowedTypes.Contains(file.ContentType))
-            return BadRequest(new { message = "Sadece JPEG, PNG veya WEBP yükleyebilirsiniz." });
-
         var profile = await db.EmployeeProfiles.FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
         if (profile == null)
             return NotFound();
 
         var oldKey = storage.TryGetKeyFromUrl(profile.CoverImageUrl);
 
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        var key = $"employees/{profile.UserId}/cover/{Guid.NewGuid()}{extension}";
-
         await using var stream = file.OpenReadStream();
-        var saved = await storage.SaveAsync(key, stream, file.ContentType);
+        var saved = await uploads.SaveImageAsync($"employees/{profile.UserId}/cover", stream, file.Length);
 
         profile.CoverImageUrl = saved.Url;
         await db.SaveChangesAsync();

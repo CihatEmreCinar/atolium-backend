@@ -4,6 +4,7 @@ using CommunityPlatform.Application.DTOs.Reviews;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
 using CommunityPlatform.Infrastructure.Persistence;
+using CommunityPlatform.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,8 @@ namespace CommunityPlatform.API.Controllers;
 public class CafeProfilesController(
     AppDbContext db,
     ICurrentUserService currentUser,
-    IStorageProvider storage) : ControllerBase
+    IStorageProvider storage,
+    SafeUploadService uploads) : ControllerBase
 {
     [HttpGet("dashboard")]
     [Authorize(Policy = "RequireCafeRole")]
@@ -134,23 +136,13 @@ public class CafeProfilesController(
         if (currentUser.UserId == null)
             return Unauthorized();
 
-        if (file.Length == 0)
-            return BadRequest(new { message = "Dosya boş olamaz." });
-
-        var allowedTypes = new[] { "image/heif","image/heic","image/jpeg", "image/png", "image/webp" };
-        if (!allowedTypes.Contains(file.ContentType))
-            return BadRequest(new { message = "Sadece HEIC,HEIF,JPEG, PNG veya WEBP yükleyebilirsiniz." });
-
         var profile = await db.CafeProfiles.FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
         if (profile == null)
             return NotFound();
 
         var oldKey = storage.TryGetKeyFromUrl(profile.AvatarUrl);
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        var key = $"cafes/{profile.UserId}/avatar/{Guid.NewGuid()}{extension}";
-
         await using var stream = file.OpenReadStream();
-        var saved = await storage.SaveAsync(key, stream, file.ContentType);
+        var saved = await uploads.SaveImageAsync($"cafes/{profile.UserId}/avatar", stream, file.Length);
 
         profile.AvatarUrl = saved.Url;
         await db.SaveChangesAsync();
@@ -169,23 +161,13 @@ public class CafeProfilesController(
         if (currentUser.UserId == null)
             return Unauthorized();
 
-        if (file.Length == 0)
-            return BadRequest(new { message = "Dosya boş olamaz." });
-
-        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
-        if (!allowedTypes.Contains(file.ContentType))
-            return BadRequest(new { message = "Sadece JPEG, PNG veya WEBP yükleyebilirsiniz." });
-
         var profile = await db.CafeProfiles.FirstOrDefaultAsync(p => p.UserId == currentUser.UserId);
         if (profile == null)
             return NotFound();
 
         var oldKey = storage.TryGetKeyFromUrl(profile.CoverImageUrl);
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        var key = $"cafes/{profile.UserId}/cover/{Guid.NewGuid()}{extension}";
-
         await using var stream = file.OpenReadStream();
-        var saved = await storage.SaveAsync(key, stream, file.ContentType);
+        var saved = await uploads.SaveImageAsync($"cafes/{profile.UserId}/cover", stream, file.Length);
 
         profile.CoverImageUrl = saved.Url;
         await db.SaveChangesAsync();

@@ -1,4 +1,3 @@
-using CommunityPlatform.Application.Common;
 using CommunityPlatform.Application.DTOs.Posts;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
@@ -13,6 +12,7 @@ namespace CommunityPlatform.Infrastructure.Services;
 public class PostService(
     AppDbContext db,
     IStorageProvider storage,
+    SafeUploadService uploads,
     ICurrentUserService currentUser,
     Microsoft.Extensions.Logging.ILogger<PostService> logger)
 {
@@ -219,26 +219,12 @@ public class PostService(
                 ?? throw new KeyNotFoundException("Post bulunamadı.");
         }
 
-        // Client artık her görseli yükleme öncesi WebP'ye transcode ediyor (bkz.
-        // postService.ts) — burada JPEG/PNG'yi de kabul etmek storage maliyeti
-        // hedefini (WebP'nin sağladığı boyut avantajını) client tarafında bir
-        // hata/eski build durumunda sessizce delebilir. Bilerek sadece webp+mp4.
-        var allowedTypes = new[] { "image/webp", "video/mp4" };
-        if (!allowedTypes.Contains(file.ContentType))
-            throw new ArgumentException("Desteklenmeyen dosya tipi. Görseller WebP, videolar mp4 olmalı.");
-
-        const long maxSize = 50 * 1024 * 1024;
-        if (file.Length > maxSize)
-            throw new ArgumentException("Dosya boyutu 50 MB'ı geçemez.");
-
-        if (!FileUploadValidator.TryGetSafeExtension(file.ContentType, allowVideo: true, out var ext))
-            throw new ArgumentException("Desteklenmeyen dosya tipi.");
-        var key = $"posts/{postId}/{Guid.NewGuid()}{ext}";
-
         await using var stream = file.OpenReadStream();
-        var result = await storage.SaveAsync(key, stream, file.ContentType);
+        var result = await uploads.SavePostMediaAsync($"posts/{postId}", stream, file.Length);
 
-        var mediaType = file.ContentType.StartsWith("video") ? PostMediaType.Video : PostMediaType.Image;
+        var mediaType = result.Key.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)
+            ? PostMediaType.Video
+            : PostMediaType.Image;
 
         var media = new PostMedia
         {

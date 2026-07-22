@@ -18,6 +18,7 @@ public static class DependencyInjection
 
         services.AddScoped<JwtService>();
         services.AddScoped<AuthService>();
+        services.AddScoped<SafeUploadService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IPushNotificationSender, PushNotificationSender>();
         services.AddScoped<IQrCodeGenerator, QrCodeGenerator>();

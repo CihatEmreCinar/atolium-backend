@@ -3,6 +3,7 @@ using CommunityPlatform.Application.DTOs.SpaceListings;
 using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
 using CommunityPlatform.Infrastructure.Persistence;
+using CommunityPlatform.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +15,7 @@ namespace CommunityPlatform.API.Controllers;
 public class SpaceListingsController(
     AppDbContext db,
     ICurrentUserService currentUser,
-    IStorageProvider storage) : ControllerBase
+    SafeUploadService uploads) : ControllerBase
 {
     [HttpPost]
     [Authorize(Policy = "RequireCafeRole")]
@@ -169,12 +170,8 @@ public class SpaceListingsController(
         if (currentUser.UserId == null)
             return Unauthorized();
 
-        if (file == null || file.Length == 0)
+        if (file is null)
             return BadRequest(new { message = "Dosya boş olamaz." });
-
-        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
-        if (!allowedTypes.Contains(file.ContentType))
-            return BadRequest(new { message = "Sadece JPEG, PNG veya WEBP yükleyebilirsiniz." });
 
         var listing = await db.SpaceListings
             .Include(l => l.CafeProfile).ThenInclude(c => c!.City)
@@ -186,11 +183,8 @@ public class SpaceListingsController(
         if (listing.CafeProfile.UserId != currentUser.UserId.Value)
             return Forbid();
 
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        var key = $"spaces/{listing.Id}/{Guid.NewGuid()}{extension}";
-
         await using var stream = file.OpenReadStream();
-        var saved = await storage.SaveAsync(key, stream, file.ContentType);
+        var saved = await uploads.SaveImageAsync($"spaces/{listing.Id}", stream, file.Length);
 
         // FIX: Önceden burada sadece storage'a kaydedip URL dönülüyordu — SpaceListing'e
         // hiç bağlanmadığı için upload "başarılı" dönmesine rağmen fotoğraf hiçbir

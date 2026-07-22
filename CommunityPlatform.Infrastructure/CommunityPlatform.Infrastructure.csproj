@@ -34,6 +34,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <UserSecretsId>d6636eaa-e516-4b11-a996-e662e835a317</UserSecretsId>
   </PropertyGroup>
 
 </Project>

@@ -30,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<UserBadge> UserBadges => Set<UserBadge>();
     public DbSet<Wishlist> Wishlists => Set<Wishlist>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<AccountActionToken> AccountActionTokens => Set<AccountActionToken>();
     // ── Reminder / Push ─────────────────────────────────────────────────────
     public DbSet<EventReminder> EventReminders => Set<EventReminder>();
     public DbSet<DeviceToken> DeviceTokens => Set<DeviceToken>();

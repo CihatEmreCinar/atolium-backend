@@ -3,6 +3,7 @@ using CommunityPlatform.Application.Interfaces;
 using CommunityPlatform.Domain.Entities;
 using CommunityPlatform.Domain.Enums;
 using CommunityPlatform.Infrastructure.Persistence;
+using CommunityPlatform.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,27 +20,17 @@ public class MediaController(
     AppDbContext db,
     IMediaObjectStore objectStore,
     IRabbitMqPublisher publisher,
-    ICurrentUserService currentUser) : ControllerBase
+    ICurrentUserService currentUser,
+    SafeUploadService uploads) : ControllerBase
 {
-    private const long MaxSizeBytes = 2 * 1024 * 1024; // mobil hedefi 512 KB, pay bırakıldı
     private const string AllowedContentType = "image/webp";
 
     [HttpPost]
+    [RequestSizeLimit(2 * 1024 * 1024)]
     public async Task<IActionResult> Upload(IFormFile file, [FromQuery] MediaPreset preset, CancellationToken ct)
     {
         if (currentUser.UserId is not { } ownerId)
             return Unauthorized();
-
-        if (file.Length == 0)
-            return BadRequest(new { message = "Dosya boş." });
-
-        if (file.Length > MaxSizeBytes)
-            return BadRequest(new { message = "Dosya çok büyük." });
-
-        // Derin (magic-number) doğrulama worker'ın işi — burada yalnızca
-        // deklare edilen Content-Type kontrol ediliyor.
-        if (file.ContentType != AllowedContentType)
-            return BadRequest(new { message = "Yalnızca WEBP kabul edilir." });
 
         var media = new Media
         {
@@ -53,6 +44,7 @@ public class MediaController(
 
         await using (var stream = file.OpenReadStream())
         {
+            await uploads.ValidateWebpAsync(stream, file.Length, ct);
             await objectStore.PutAsync(media.TempObjectKey, stream, AllowedContentType, ct);
         }
 

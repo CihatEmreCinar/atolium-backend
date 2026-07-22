@@ -21,7 +21,7 @@ public sealed class VerifyEmailBuilder(IOptions<EmailBrandOptions> brand) : Emai
     protected override EmailTemplateModel BuildModel(VerifyEmailEvent e) => EmailTemplateModel.Create(
         hero: null,
         title: "E-posta adresini doğrula",
-        content: $"Merhaba {e.DisplayName}, hesabını aktifleştirmek için aşağıdaki butona tıkla. Bu bağlantı {FormatExpiry(e.ExpiresIn)} içinde geçerliliğini yitirecek.",
+        content: $"Merhaba {e.DisplayName}, hesabını aktifleştirmek için uygulamaya şu doğrulama kodunu gir:<br><br><strong style=\"font-size:28px;letter-spacing:6px;\">{e.VerificationCode}</strong><br><br>Bu kod {FormatExpiry(e.OtpExpiresIn)} içinde geçerliliğini yitirecek. Web'den devam etmek istersen aşağıdaki bağlantıyı kullanabilirsin; bağlantı {FormatExpiry(e.ExpiresIn)} geçerlidir.",
         cta: new EmailButtonModel { PrimaryText = "E-postamı Doğrula", PrimaryUrl = e.VerificationUrl },
         infoBox: new InformationBoxModel
         {

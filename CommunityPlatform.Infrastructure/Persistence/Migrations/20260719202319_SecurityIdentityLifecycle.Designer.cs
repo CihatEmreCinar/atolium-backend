@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using CommunityPlatform.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CommunityPlatform.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260719202319_SecurityIdentityLifecycle")]
+    partial class SecurityIdentityLifecycle
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,19 +36,6 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("OtpAttemptCount")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("OtpExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("OtpHash")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<DateTime?>("OtpUsedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Purpose")
@@ -70,8 +60,6 @@ namespace CommunityPlatform.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.HasIndex("UserId", "Purpose", "ExpiresAt");
-
-                    b.HasIndex("UserId", "Purpose", "OtpExpiresAt");
 
                     b.ToTable("AccountActionTokens");
                 });
